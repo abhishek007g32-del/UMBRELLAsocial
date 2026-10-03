@@ -3,26 +3,22 @@
 
 
 
-
-
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-
-
-  <style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home / UMBRELLAsocial • Secure</title>
+<script>(function(){ try{ const c=JSON.parse(localStorage.getItem('umbrella_ban_cache')||'null'); if(c&&c.banned){ const u=c.until?new Date(c.until):null; if(!u||u>new Date()){ if(!location.pathname.includes('banned.html')) location.replace('banned.html'); }} }catch(e){} })();</script>
+<style>
+#mainApp{display:none} #banCheckLoader{display:flex}
+.name-truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.badge-locked{flex-shrink:0!important;display:inline-flex!important;align-items:center!important;gap:4px!important}
 .badge-group-universal{display:inline-flex!important;align-items:center!important;gap:4px!important;vertical-align:middle!important;margin-left:5px!important;flex-shrink:0!important}
 .badge-item{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1}
 .badge-verified-universal{width:16px;height:16px;background:#1d9bf0;border-radius:50%;color:white;font-size:8px;display:inline-flex;align-items:center;justify-content:center}
 .badge-founder-universal{width:16px;height:16px;background:linear-gradient(135deg,#fbbf24,#f97316);border-radius:50%;color:black;font-size:8px;display:inline-flex;align-items:center;justify-content:center}
 .badge-featured-universal{width:16px;height:16px;background:linear-gradient(135deg,#a855f7,#3b82f6);border-radius:50%;color:white;font-size:8px;display:inline-flex;align-items:center;justify-content:center}
 </style>
-  
-  
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Home / UMBRELLAsocial • Secure</title>
-<script>(function(){ try{ const c=JSON.parse(localStorage.getItem('umbrella_ban_cache')||'null'); if(c&&c.banned){ const u=c.until?new Date(c.until):null; if(!u||u>new Date()){ if(!location.pathname.includes('banned.html')) location.replace('banned.html'); }} }catch(e){} })();</script>
-<style>#mainApp{display:none} #banCheckLoader{display:flex}.name-truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}.badge-locked{flex-shrink:0!important;display:inline-flex!important;align-items:center}</style>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -43,23 +39,31 @@ function getInitials(name){
 }
 function formatTime(ts){ if(!ts) return 'now'; try{ const d=ts.toDate?ts.toDate():new Date(ts); const s=Math.floor((new Date()-d)/1000); if(s<60) return 'now'; const m=Math.floor(s/60); if(m<60) return m+'m'; const h=Math.floor(m/60); if(h<24) return h+'h'; return Math.floor(h/24)+'d'; }catch(e){ return 'now'; } }
 function escapeHtml(t){ return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// UNIVERSAL BADGE - ORDER: Verified FIRST, Featured SECOND, Founder THIRD - Works for ALL USERS
 function getSingleTag(u){
   if(!u) return '';
-  if(u.isFounder) return `<span class="badge-locked inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-300 to-orange-500 text-black text-[6px] font-black tracking-widest"><i class="fa-solid fa-crown text-[5px]"></i> FOUNDER</span>`;
-  if(u.isStaff) { const role=(u.staffRole||'SUPPORT STAFF').toUpperCase(); return `<span class="badge-locked inline-flex px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[7px] font-black tracking-widest">${role}</span>`; }
-  if(u.isFeatured && u.isVerified) return `<span class="badge-locked flex items-center gap-0.5"><i class="fa-solid fa-bolt text-purple-400 text-[10px]"></i><i class="fa-solid fa-circle-check text-[#1d9bf0] text-[11px]"></i></span>`;
-  if(u.isVerified) return `<span class="badge-locked"><i class="fa-solid fa-circle-check text-[#1d9bf0] text-[12px]"></i></span>`;
-  if(u.isFeatured) return `<span class="badge-locked"><i class="fa-solid fa-bolt text-purple-400 text-[10px]"></i></span>`;
-  return '';
-}
-function getTagsStacked(u){
-  if(!u) return ''; let html='';
-  if(u.isFounder) html+=`<span class="badge-locked inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-300 to-orange-500 text-black text-[7px] font-black"><i class="fa-solid fa-crown text-[6px]"></i> FOUNDER</span>`;
-  else if(u.isStaff) html+=`<span class="badge-locked inline-flex px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[7px] font-black">${(u.staffRole||'STAFF').toUpperCase()}</span>`;
-  if(u.isVerified) html+=`<span class="badge-locked w-4 h-4 bg-[#1d9bf0] rounded-full inline-flex items-center justify-center"><i class="fa-solid fa-check text-[8px] text-white"></i></span>`;
-  if(u.isFeatured) html+=`<span class="badge-locked w-4 h-4 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full inline-flex items-center justify-center"><i class="fa-solid fa-bolt text-[8px] text-white"></i></span>`;
+  if(u.isStaff &&!u.isFounder){
+    const role=(u.staffRole||'SUPPORT STAFF').toUpperCase();
+    return `<span class="badge-locked inline-flex px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[7px] font-black tracking-widest">${role}</span>`;
+  }
+  let html = '<span class="badge-group-universal">';
+  if(u.isVerified){
+    html += '<span class="badge-item badge-verified-universal"><i class="fa-solid fa-check"></i></span>';
+  }
+  if(u.isFeatured){
+    html += '<span class="badge-item badge-featured-universal"><i class="fa-solid fa-bolt"></i></span>';
+  }
+  if(u.isFounder){
+    html += '<span class="badge-item badge-founder-universal"><i class="fa-solid fa-crown"></i></span>';
+  }
+  html += '</span>';
   return html;
 }
+function getTagsStacked(u){
+  return getSingleTag(u);
+}
+
 function applyFounderGlow(data){
   const card=document.getElementById('founderCard'); const avatar=document.getElementById('sidebarAvatar'); const name=document.getElementById('sidebarName');
   if(!card||!avatar||!name) return; const hasGlow=(data.isFeatured&&data.isVerified)||data.isFounder;
@@ -87,20 +91,14 @@ async function createNotification(toUid,type,extra={}){
 function togglePostMenu(postId, e){ if(e) e.stopPropagation(); const menu=document.getElementById('menu-'+postId); if(!menu) return; document.querySelectorAll('[id^="menu-"]').forEach(m=>{ if(m.id!=='menu-'+postId) m.classList.add('hidden'); }); menu.classList.toggle('hidden'); }
 async function deletePost(postId, e){ if(e) e.stopPropagation(); if(!confirm('Delete this post permanently?')) return; try{ await db.collection('posts').doc(postId).delete(); }catch(err){ alert('Failed: '+err.message); } }
 document.addEventListener('click', ()=>{ document.querySelectorAll('[id^="menu-"]').forEach(m=> m.classList.add('hidden')); });
-
 function updateComposerAvatar(){
   const el=document.getElementById('composerAvatar');
   if(!el ||!currentUserData) return;
   const name=currentUserData.name||'User';
   const initials=getInitials(name);
   const photo=currentUserData.photoURL||currentUserData.profilePic||'';
-  if(photo){
-    el.innerHTML=`<img src="${photo}" class="w-full h-full object-cover">`;
-  }else{
-    el.innerText=initials;
-  }
+  if(photo){ el.innerHTML=`<img src="${photo}" class="w-full h-full object-cover">`; }else{ el.innerText=initials; }
 }
-
 document.addEventListener('DOMContentLoaded',()=>{
  auth.onAuthStateChanged(async u=>{
   if(u){
@@ -199,7 +197,7 @@ function loadFeed(){
    const glowClass = (isFeat && isVer) || isFounder? 'founder-glow-post' : '';
    const nameClass = (isFeat && isVer) || isFounder? 'featured-name' : '';
    const canDelete = uid === currentUid || (currentUserData && currentUserData.isFounder);
-   html+=`<div class="group relative p-5 border-b border-white/[0.06] hover:bg-white/[0.02] transition-all ${glowClass}"><div class="flex gap-3.5"><a href="profile.html?uid=${uid}" class="w-10 h-10 rounded-full ${isFounder?'bg-gradient-to-br from-amber-300 to-orange-600 border-2 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.4)] text-black': isFeat && isVer? 'bg-gradient-to-br from-[#c084fc] to-[#38bdf8] border-2 border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.5)] text-white' : 'bg-white text-black'} flex items-center justify-center font-black text-[12px] flex-shrink-0 overflow-hidden">${photo?`<img src="${photo}" class="w-full h-full object-cover">`:initials}</a><div class="flex-1 min-w-0"><div class="flex items-start justify-between gap-2"><div class="flex items-center gap-1 min-w-0 flex-wrap"><a href="profile.html?uid=${uid}" class="font-bold text-[14px] ${nameClass} text-white hover:underline truncate max-w-[120px]" title="${escapeHtml(name)}">${escapeHtml(name)}</a><span class="badge-locked flex items-center gap-0.5 flex-shrink-0">${tagsHtml}</span><span class="text-white/30 text-[12px] ml-1 flex-shrink-0">@${cleanH(handle)} · ${time}</span></div>${canDelete? `<div class="relative flex-shrink-0 ml-2"><button onclick="togglePostMenu('${pid}', event)" class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] flex items-center justify-center text-white/50 hover:text-white transition-all"><i class="fa-solid fa-ellipsis pointer-events-none"></i></button><div id="menu-${pid}" class="hidden absolute right-0 top-9 z-[50] w-[160px] rounded-2xl bg-[#1a1a1e] border border-white/10 shadow-[0_15px_50px_rgba(0,0,0,0.9)] overflow-hidden"><button onclick="deletePost('${pid}', event)" class="w-full text-left px-4 py-3.5 text-[12px] font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2.5"><i class="fa-solid fa-trash-can"></i> Delete Post</button><button onclick="togglePostMenu('${pid}', event)" class="w-full text-left px-4 py-3 text-[11px] font-bold text-white/40 hover:bg-white/[0.06] flex items-center gap-2"><i class="fa-solid fa-xmark"></i> Cancel</button></div></div>` : ''}</div><div class="text-[14px] leading-[20px] text-white/90 mt-2 whitespace-pre-wrap break-words">${escapeHtml(p.text||p.content||'')}</div>${p.imageUrl||p.image?`<img src="${p.imageUrl||p.image}" class="mt-4 rounded-2xl border border-white/10 max-h-[460px] w-full object-cover">`:''}</div></div></div>`;
+   html+=`<div class="group relative p-5 border-b border-white/[0.06] hover:bg-white/[0.02] transition-all ${glowClass}"><div class="flex gap-3.5"><a href="profile.html?uid=${uid}" class="w-10 h-10 rounded-full ${isFounder?'bg-gradient-to-br from-amber-300 to-orange-600 border-2 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.4)] text-black': isFeat && isVer? 'bg-gradient-to-br from-[#c084fc] to-[#38bdf8] border-2 border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.5)] text-white' : 'bg-white text-black'} flex items-center justify-center font-black text-[12px] flex-shrink-0 overflow-hidden">${photo?`<img src="${photo}" class="w-full h-full object-cover">`:initials}</a><div class="flex-1 min-w-0"><div class="flex items-start justify-between gap-2"><div class="flex items-center gap-1 min-w-0 flex-wrap"><a href="profile.html?uid=${uid}" class="font-bold text-[14px] ${nameClass} text-white hover:underline truncate max-w-[120px]" title="${escapeHtml(name)}">${escapeHtml(name)}</a><span class="badge-locked">${tagsHtml}</span><span class="text-white/30 text-[12px] ml-1 flex-shrink-0">@${cleanH(handle)} · ${time}</span></div>${canDelete? `<div class="relative flex-shrink-0 ml-2"><button onclick="togglePostMenu('${pid}', event)" class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] flex items-center justify-center text-white/50 hover:text-white transition-all"><i class="fa-solid fa-ellipsis pointer-events-none"></i></button><div id="menu-${pid}" class="hidden absolute right-0 top-9 z-[50] w-[160px] rounded-2xl bg-[#1a1a1e] border border-white/10 shadow-[0_15px_50px_rgba(0,0,0,0.9)] overflow-hidden"><button onclick="deletePost('${pid}', event)" class="w-full text-left px-4 py-3.5 text-[12px] font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2.5"><i class="fa-solid fa-trash-can"></i> Delete Post</button><button onclick="togglePostMenu('${pid}', event)" class="w-full text-left px-4 py-3 text-[11px] font-bold text-white/40 hover:bg-white/[0.06] flex items-center gap-2"><i class="fa-solid fa-xmark"></i> Cancel</button></div></div>` : ''}</div><div class="text-[14px] leading-[20px] text-white/90 mt-2 whitespace-pre-wrap break-words">${escapeHtml(p.text||p.content||'')}</div>${p.imageUrl||p.image?`<img src="${p.imageUrl||p.image}" class="mt-4 rounded-2xl border border-white/10 max-h-[460px] w-full object-cover">`:''}</div></div></div>`;
    if(visibleCount>=25) break;
   }
   feed.innerHTML=html||`<div class="p-10 text-center text-white/30 text-sm">No mutual posts yet.</div>`;
@@ -224,7 +222,7 @@ function renderWhoToFollowShuffled(){
    const singleTag = getSingleTag({isFounder, isStaff:false, isVerified:isVer, isFeatured:isFeat});
    const glowAvatar = (isFeat && isVer) || isFounder? 'border-2 border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.5)]' : 'border border-white/10';
    const nameClass = (isFeat && isVer) || isFounder? 'featured-name' : '';
-   html+=`<div class="flex items-center justify-between py-3 group"><a href="profile.html?uid=${doc.id}" class="flex items-center gap-3 min-w-0 flex-1 overflow-hidden hover:opacity-80 transition-opacity"><div class="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center font-black text-[11px] overflow-hidden flex-shrink-0 ${glowAvatar}">${photo?`<img src="${photo}" class="w-full h-full object-cover">`:initials}</div><div class="min-w-0 flex-1 overflow-hidden"><div class="flex items-center gap-1 min-w-0 overflow-hidden"><span class="name-truncate font-bold text-[12px] text-white ${nameClass}" title="${escapeHtml(name)}">${escapeHtml(name)}</span><span class="badge-locked flex items-center gap-0.5 flex-shrink-0">${singleTag}</span></div><p class="text-[10px] text-white/30 truncate mt-0.5">@${cleanH(doc.username||doc.handle)}</p></div></a><button onclick="event.stopPropagation(); followFromSuggestion('${doc.id}', this)" class="bg-white text-black font-bold px-3.5 py-1.5 rounded-full text-[11px] hover:bg-white/90 ml-2 flex-shrink-0">Follow</button></div>`;
+   html+=`<div class="flex items-center justify-between py-3 group"><a href="profile.html?uid=${doc.id}" class="flex items-center gap-3 min-w-0 flex-1 overflow-hidden hover:opacity-80 transition-opacity"><div class="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center font-black text-[11px] overflow-hidden flex-shrink-0 ${glowAvatar}">${photo?`<img src="${photo}" class="w-full h-full object-cover">`:initials}</div><div class="min-w-0 flex-1 overflow-hidden"><div class="flex items-center gap-1 min-w-0 overflow-hidden"><span class="name-truncate font-bold text-[12px] text-white ${nameClass}" title="${escapeHtml(name)}">${escapeHtml(name)}</span><span class="badge-locked">${singleTag}</span></div><p class="text-[10px] text-white/30 truncate mt-0.5">@${cleanH(doc.username||doc.handle)}</p></div></a><button onclick="event.stopPropagation(); followFromSuggestion('${doc.id}', this)" class="bg-white text-black font-bold px-3.5 py-1.5 rounded-full text-[11px] hover:bg-white/90 ml-2 flex-shrink-0">Follow</button></div>`;
  });
  container.innerHTML=html; whoToFollowIndex+=3;
 }
@@ -233,7 +231,6 @@ function shuffleWhoToFollow(){ whoToFollowCache=shuffleArray(whoToFollowCache); 
 async function followFromSuggestion(uid, btn){ btn.innerText='✓'; btn.disabled=true; try{ await db.collection('follows').add({followerId:currentUid, followingId:uid, createdAt:firebase.firestore.FieldValue.serverTimestamp()}); followingSet.add(uid); await createNotification(uid, 'follow'); whoToFollowCache=whoToFollowCache.filter(u=>u.id!==uid); staffCache=staffCache.filter(u=>u.id!==uid); setTimeout(()=>{ renderWhoToFollowShuffled(); renderStaffButton(); },400); }catch(e){ btn.innerText='Follow'; btn.disabled=false; } }
 function handleImageSelect(e){ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=ev=>{ const img=new Image(); img.onload=()=>{ const c=document.createElement('canvas'); let w=img.width,h=img.height; const MAX=800; if(w>MAX||h>MAX){ if(w>h){ h*=MAX/w; w=MAX; } else { w*=MAX/h; h=MAX; } } c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); selectedImageBase64=c.toDataURL('image/jpeg',0.6); document.getElementById('previewImg').src=selectedImageBase64; document.getElementById('imagePreviewBox').classList.remove('hidden'); }; img.src=ev.target.result; }; r.readAsDataURL(f); }
 function clearImagePreview(){ selectedImageBase64=''; document.getElementById('imagePreviewBox').classList.add('hidden'); }
-
 const BANNED_WORDS=['chutiya','bhenchod','madarchod','bsdk','mc','bc','gandu','randi','lodu','harami','bhosdi','suar','kamine','saale','fuck','shit','bitch','bastard','asshole','slut','whore','anti india','india hate','pakistan zindabad','khalistan','tukde tukde','anti national','desh drohi','modi','rahul gandhi','bjp','congress','vote for','election fraud','midjourney','stable diffusion','dall-e','ai generated','generated by ai','isis','terrorist support'];
 function checkSafety(text){
   if(!text) return {safe:true};
@@ -280,7 +277,6 @@ body{background:#050507;color:#e7e9ea;font-family:'Inter',sans-serif;}
 <div class="flex items-center gap-3"><h1 class="text-[15px] font-black">Home</h1><span class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[10px] font-bold tracking-widest"><span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span> ENCRYPTED</span></div>
 <div class="flex items-center gap-2 text-[11px] text-white/40"><i class="fa-solid fa-shield-halved text-white/60"></i><span id="mutualInfo" class="text-white/60">0 trusted mutuals</span></div>
 </div>
-
 <div class="p-5 border-b border-white/[0.06] bg-gradient-to-b from-white/[0.04] to-transparent">
 <div class="flex gap-3.5">
 <div id="composerAvatar" class="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center font-black text-[12px] flex-shrink-0 overflow-hidden">AS</div>
@@ -306,7 +302,6 @@ body{background:#050507;color:#e7e9ea;font-family:'Inter',sans-serif;}
     </div>
   </div>
 </div>
-
 <textarea id="postInput" placeholder="Share something secure... Only your trusted mutuals will see this." class="w-full bg-transparent text-white placeholder-white/30 outline-none text-[15px] min-h-[56px] resize-none leading-[22px]"></textarea>
 <div id="imagePreviewBox" class="hidden relative mt-3"><img id="previewImg" src="" class="rounded-2xl max-h-80 border border-white/10 w-full object-cover"><button onclick="clearImagePreview()" class="absolute top-3 right-3 w-8 h-8 bg-black/70 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10"><i class="fa-solid fa-xmark text-xs"></i></button></div>
 <div class="flex items-center justify-between mt-4"><div class="flex items-center gap-3"><label class="w-9 h-9 rounded-full bg-white/[0.06] border border-white/[0.06] hover:bg-white/[0.1] flex items-center justify-center text-white/60 hover:text-white cursor-pointer transition-all"><i class="fa-regular fa-image text-[14px]"></i><input type="file" accept="image/*" class="hidden" onchange="handleImageSelect(event)"></label><span class="hidden md:flex items-center gap-1.5 text-[10px] text-white/25"><i class="fa-solid fa-lock text-[9px]"></i> Mutuals only • Encrypted • Safe</span></div><button id="postBtn" onclick="createPost()" class="bg-white text-black font-black px-6 py-2.5 rounded-full text-[13px] hover:bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.15)]">Post Securely <i class="fa-solid fa-lock ml-1.5 text-[10px] opacity-60"></i></button></div>
@@ -322,9 +317,6 @@ body{background:#050507;color:#e7e9ea;font-family:'Inter',sans-serif;}
 </div>
 </body>
 </html>
-
-
-
 
 
 
