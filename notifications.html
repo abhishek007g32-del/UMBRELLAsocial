@@ -1,10 +1,27 @@
+
+
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Notifications / UMBRELLAsocial • Secure</title>
 <script>(function(){ try{ const c=JSON.parse(localStorage.getItem('umbrella_ban_cache')||'null'); if(c&&c.banned){ const u=c.until?new Date(c.until):null; if(!u||u>new Date()){ if(!location.pathname.includes('banned.html')) location.replace('banned.html'); }} }catch(e){} })();</script>
-<style>#mainApp{display:none} #banCheckLoader{display:flex}</style>
+<style>
+#mainApp{display:none} #banCheckLoader{display:flex}
+.badge-locked{flex-shrink:0!important;display:inline-flex!important;align-items:center!important;gap:4px!important}
+.badge-group-universal{display:inline-flex!important;align-items:center!important;gap:4px!important;vertical-align:middle!important;margin-left:5px!important;flex-shrink:0!important}
+.badge-item{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1}
+.badge-verified-universal{width:16px;height:16px;background:#1d9bf0;border-radius:50%;color:white;font-size:8px;display:inline-flex;align-items:center;justify-content:center}
+.badge-founder-universal{width:16px;height:16px;background:linear-gradient(135deg,#fbbf24,#f97316);border-radius:50%;color:black;font-size:8px;display:inline-flex;align-items:center;justify-content:center}
+.badge-featured-universal{width:16px;height:16px;background:linear-gradient(135deg,#a855f7,#3b82f6);border-radius:50%;color:white;font-size:8px;display:inline-flex;align-items:center;justify-content:center}
+</style>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -16,13 +33,23 @@ let currentUid=null;
 
 function cleanH(h){ return (h||'user').toString().replace(/@/g,'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'')||'user'; }
 function escapeHtml(t){ return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// UNIVERSAL BADGE - ORDER: Verified FIRST, Featured SECOND, Founder THIRD
 function getSingleTag(u){
   if(!u) return '';
-  let badges=''; if(u.isVerified) badges+=`<i class="fa-solid fa-circle-check text-[#1d9bf0] text-[11px] ml-1"></i>`;
-  if(u.isFounder) return `<span class="inline-flex px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-300 to-orange-500 text-black text-[6px] font-black tracking-widest">FOUNDER</span>`+badges;
-  if(u.isStaff){ const r=(u.staffRole||'STAFF').toUpperCase(); return `<span class="inline-flex px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[6px] font-black">${r}</span>`+badges; }
-  return badges;
+  if(u.isStaff &&!u.isFounder){
+    const role=(u.staffRole||'STAFF').toUpperCase();
+    return `<span class="badge-locked inline-flex px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[6px] font-black">${role}</span>`;
+  }
+  let html = '<span class="badge-group-universal">';
+  if(u.isVerified){ html += '<span class="badge-item badge-verified-universal"><i class="fa-solid fa-check"></i></span>'; }
+  if(u.isFeatured){ html += '<span class="badge-item badge-featured-universal"><i class="fa-solid fa-bolt"></i></span>'; }
+  if(u.isFounder){ html += '<span class="badge-item badge-founder-universal"><i class="fa-solid fa-crown"></i></span>'; }
+  html += '</span>';
+  return html;
 }
+function getTagsStacked(u){ return getSingleTag(u); }
+
 function formatTime(ts){ if(!ts) return 'now'; try{ const d=ts.toDate?ts.toDate():new Date(ts); const diff=Math.floor((new Date()-d)/1000); if(diff<60) return 'now'; if(diff<3600) return Math.floor(diff/60)+'m'; if(diff<86400) return Math.floor(diff/3600)+'h'; return Math.floor(diff/86400)+'d'; }catch(e){return 'now';} }
 
 document.addEventListener('DOMContentLoaded',()=>{
@@ -47,28 +74,26 @@ function loadNotificationsRealtime(){
    let unreadCount=0;
    snap.forEach(d=>{ if(d.data().isRead===false || d.data().read===false) unreadCount++; });
    countEl.innerText = unreadCount>0? `${unreadCount} unread` : `${snap.size} total`;
-
    if(snap.empty){
      list.innerHTML=`<div class="flex flex-col items-center justify-center py-20 px-6 text-center"><div class="w-16 h-16 bg-white/[0.04] border border-white/[0.06] rounded-[20px] flex items-center justify-center mb-4"><i class="fa-regular fa-bell text-xl text-white/20"></i></div><h3 class="text-white font-black text-[14px]">No notifications yet</h3><p class="text-white/30 text-[12px] mt-2 max-w-[280px]">When admin approves your verification or you get follows/likes, you'll see it here.</p></div>`;
      return;
    }
    let docs=[]; snap.forEach(d=>docs.push({id:d.id,...d.data()}));
    docs.sort((a,b)=>{ const ta=a.createdAt?.toDate? a.createdAt.toDate() : new Date(0); const tb=b.createdAt?.toDate? b.createdAt.toDate() : new Date(0); return tb-ta; });
-
    let html='';
    docs.forEach(n=>{
      const time=formatTime(n.createdAt);
      const isUnread = n.isRead===false || n.read===false;
      const unreadClass = isUnread? 'bg-[#1d9bf0]/[0.06] border-l-2 border-l-[#1d9bf0]':'border-l-2 border-l-transparent';
      const icon = n.type==='verification_approved'?'fa-circle-check text-[#1d9bf0]': n.type==='verification_rejected'?'fa-circle-xmark text-red-400': (n.icon||'fa-bell')+' text-white/50';
-     const fromTag = n.fromIsFounder? getSingleTag({isFounder:true,isVerified:true}) : n.fromIsStaff? getSingleTag({isStaff:true,staffRole:n.fromStaffRole,isVerified:true}) : (n.fromIsVerified? getSingleTag({isVerified:true}) : '');
+     const fromTag = n.fromIsFounder? getSingleTag({isFounder:true,isVerified:true,isFeatured:true}) : n.fromIsStaff? getSingleTag({isStaff:true,staffRole:n.fromStaffRole,isVerified:true}) : (n.fromIsVerified? getSingleTag({isVerified:true,isFeatured:n.fromIsFeatured}) : getSingleTag({isFeatured:n.fromIsFeatured}));
      html+=`
      <div onclick="markRead('${n.id}')" class="p-4 border-b border-white/[0.06] hover:bg-white/[0.03] cursor-pointer flex gap-3.5 transition-colors ${unreadClass} ${isUnread?'':'opacity-90'}">
        <div class="w-10 h-10 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center flex-shrink-0 overflow-hidden">${n.fromPhoto?`<img src="${n.fromPhoto}" class="w-full h-full object-cover">`:`<i class="fa-solid ${icon} text-[14px]"></i>`}</div>
        <div class="flex-1 min-w-0">
          <div class="flex items-center gap-1.5 flex-wrap">
            <span class="text-[13px] font-bold text-white">${escapeHtml(n.title||'Notification')}</span>
-           <span class="flex items-center">${fromTag}</span>
+           <span class="flex items-center badge-locked">${fromTag}</span>
            <span class="text-[11px] text-white/30">· ${time}</span>
            ${isUnread?'<span class="w-2 h-2 bg-[#1d9bf0] rounded-full ml-1 shadow-[0_0_8px_#1d9bf0]"></span>':''}
          </div>
@@ -81,7 +106,6 @@ function loadNotificationsRealtime(){
    list.innerHTML=html;
  });
 }
-
 function markRead(id){ db.collection('notifications').doc(id).update({read:true,isRead:true}).catch(()=>{}); }
 function markAllRead(){ db.collection('notifications').where('userId','==',currentUid).get().then(s=>{ s.forEach(d=>{ d.ref.update({read:true,isRead:true}); }); }); }
 </script>
@@ -96,10 +120,7 @@ body{background:#050507;color:#e7e9ea;font-family:'Inter',sans-serif}
 </head>
 <body>
 <div id="banCheckLoader" class="fixed inset-0 z-[9999] bg-[#050507] flex items-center justify-center"><div class="w-10 h-10 border-2 border-white/10 border-t-white rounded-full animate-spin"></div></div>
-
 <div id="mainApp" class="max-w-[720px] mx-auto w-full min-h-screen bg-[#08080a] border-x border-white/[0.06]">
-
-<!-- TOP BAR - NO SIDEBAR -->
 <div class="sticky top-0 z-20 bg-[#08080a]/90 backdrop-blur-2xl border-b border-white/[0.06]">
   <div class="flex items-center justify-between px-4 py-3">
     <div class="flex items-center gap-3">
@@ -118,8 +139,6 @@ body{background:#050507;color:#e7e9ea;font-family:'Inter',sans-serif}
     </div>
   </div>
 </div>
-
-<!-- INFO CARD SAME AS HOMEPAGE -->
 <div class="m-3 rounded-[16px] bg-white/[0.04] border border-white/[0.06] p-3 flex items-center gap-3">
   <div class="w-8 h-8 rounded-full bg-[#1d9bf0]/15 border border-[#1d9bf0]/20 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-shield-halved text-[#1d9bf0] text-[11px]"></i></div>
   <div class="flex-1">
@@ -128,9 +147,12 @@ body{background:#050507;color:#e7e9ea;font-family:'Inter',sans-serif}
   </div>
   <div class="w-2 h-2 bg-[#1d9bf0] rounded-full animate-pulse shadow-[0_0_8px_#1d9bf0]"></div>
 </div>
-
 <div id="notificationsList" class="pb-10"><div class="p-10 text-center text-white/20 text-xs animate-pulse">Loading notifications...</div></div>
-
 </div>
 </body>
 </html>
+
+
+
+
+
