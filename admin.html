@@ -1,0 +1,258 @@
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin / UMBRELLAsocial</title>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyC4DGER69Xfc3P_xcQR5RtXH3oBuLP9rKY",authDomain:"umbrellasocial.firebaseapp.com",projectId:"umbrellasocial",storageBucket:"umbrellasocial.firebasestorage.app",messagingSenderId:"126237795119",appId:"1:126237795119:web:db54ac49f178e0136bf7da"};
+if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore(); const auth=firebase.auth();
+let currentUid=null, allUsers=[], banTargetUid=null, currentVerif=null;
+const REQUIRED_DAYS=180;
+document.addEventListener('DOMContentLoaded',()=>{
+  auth.onAuthStateChanged(async u=>{
+    if(!u){ location.href='auth.html'; return; }
+    currentUid=u.uid;
+    const snap=await db.collection('users').doc(u.uid).get();
+    if(!snap.exists ||!snap.data().isAdmin){ alert('Not admin'); location.href='homepage.html'; return; }
+    document.getElementById('loader').style.display='none';
+    document.getElementById('mainApp').style.display='flex';
+    loadStats(); loadVerifications(); loadUsers(); loadReports(); loadPunishments(); listenBadges(); loadUnlockRequests(); listenUnlockBadge();
+  });
+});
+function cleanH(h){ if(!h) return 'user'; return h.toString().replace(/@/g,'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,30)||'user'; }
+function getUserTags(u){
+  let tags=''; if(u.isFounder) tags+=`<span class="inline-flex items-center gap-1 ml-1.5 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-300 to-orange-500 text-black text-[8px] font-black"><i class="fa-solid fa-crown text-[8px]"></i> FOUNDER</span>`;
+  if(u.isStaff&&!u.isFounder){ const role=(u.staffRole||'STAFF').toUpperCase().replace(' TEAM',''); tags+=`<span class="inline-flex items-center gap-1 ml-1.5 px-2 py-0.5 rounded-full bg-[#111] border border-amber-500/30 text-amber-400 text-[8px] font-black"><i class="fa-solid fa-briefcase text-[7px]"></i> ${role}</span>`; }
+  if(u.isAdmin&&!u.isFounder&&!u.isStaff) tags+=`<span class="ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-black text-[8px] font-black">ADMIN</span>`;
+  if(u.isFeatured||u.hasGlow) tags+=`<i class="fa-solid fa-bolt text-purple-400 text-[10px] ml-1"></i>`;
+  if(u.isVerified) tags+=`<i class="fa-solid fa-circle-check text-[#1d9bf0] text-[12px] ml-1"></i>`;
+  if(u.isBanned) tags+=`<span class="ml-1.5 px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 text-[8px] font-black">BANNED</span>`;
+  if(u.mustResetPassword) tags+=`<span class="ml-1.5 px-1.5 py-0.5 rounded-full bg-green-500 text-black text-[8px] font-black">RESET PWD REQ → password_reset.html</span>`;
+  return tags;
+}
+function showToast(message,type="blue"){
+  const container=document.getElementById('toastContainer');
+  const colors={ blue:"from-[#1d9bf0] to-[#0c7abf] border-[#1d9bf0]/30 shadow-[0_0_30px_rgba(29,155,240,0.4)]", glow:"from-[#c084fc] via-[#38bdf8] to-[#f472b6] border-purple-500/30 shadow-[0_0_40px_rgba(192,132,252,0.5)]", ban:"from-amber-500 to-orange-600 border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.4)]", delete:"from-red-500 to-red-700 border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.4)]", success:"from-green-500 to-emerald-600 border-green-500/30 shadow-[0_0_30px_rgba(34,197,94,0.4)]" };
+  const icons={ blue:"fa-circle-check", glow:"fa-bolt", ban:"fa-ban", delete:"fa-trash", success:"fa-check" };
+  const toast=document.createElement('div'); toast.className=`toast-enter flex items-center gap-3 px-5 py-3.5 rounded-full bg-gradient-to-r ${colors[type]} border text-white font-bold text-[13px] backdrop-blur-xl`;
+  toast.innerHTML=`<div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><i class="fa-solid ${icons[type]} text-[12px]"></i></div><span>${message}</span><button onclick="this.parentElement.remove()" class="ml-2 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center"><i class="fa-solid fa-xmark text-[10px]"></i></button>`;
+  container.appendChild(toast); setTimeout(()=>{ toast.classList.add('toast-exit'); setTimeout(()=>toast.remove(),400); },3500);
+}
+function listenBadges(){
+  db.collection('verificationRequests').where('status','==','pending').onSnapshot(s=>{
+    const c=s.size; document.querySelectorAll('.verifBadge').forEach(b=>{ if(c>0){ b.innerText=c; b.classList.remove('hidden'); b.classList.add('flex'); } else{ b.classList.add('hidden'); b.classList.remove('flex'); } });
+  });
+}
+function listenUnlockBadge(){
+  db.collection('securityVerifications').where('status','==','pending_founder_approval').onSnapshot(s=>{
+    const c=s.size; const b=document.getElementById('unlockBadge'); if(b){ if(c>0){ b.innerText=c; b.classList.remove('hidden'); b.classList.add('flex'); } else{ b.classList.add('hidden'); b.classList.remove('flex'); } }
+    const ds=document.getElementById('statUnlocks'); if(ds) ds.innerText=c;
+  });
+}
+function switchTab(tab){ document.querySelectorAll('.tab-pane').forEach(p=>p.classList.add('hidden')); document.getElementById(tab+'Pane').classList.remove('hidden'); document.querySelectorAll('.side-tab').forEach(b=>b.classList.remove('bg-white','text-black')); document.getElementById('tab-'+tab).classList.add('bg-white','text-black'); }
+function loadStats(){
+  db.collection('users').onSnapshot(s=>{ document.getElementById('statUsers').innerText=s.size; });
+  db.collection('verificationRequests').where('status','==','pending').onSnapshot(s=>{ document.getElementById('statVerif').innerText=s.size; });
+  db.collection('reports').onSnapshot(s=>{ document.getElementById('statReports').innerText=s.size; });
+  db.collection('users').where('isBanned','==',true).onSnapshot(s=>{ document.getElementById('statBanned').innerText=s.size; document.getElementById('statPunish').innerText=s.size; });
+}
+function loadVerifications(){
+  db.collection('verificationRequests').onSnapshot(snap=>{
+    let map=new Map(); let duplicates=0; snap.forEach(d=>{ const data={id:d.id,...d.data()}; if(!map.has(data.userId)){ map.set(data.userId,data); } else{ duplicates++; const existing=map.get(data.userId); const t1=existing.createdAt?.toMillis?.()||0; const t2=data.createdAt?.toMillis?.()||0; if(t2>t1) map.set(data.userId,data); } });
+    let docs=Array.from(map.values()).filter(r=>r.status==='pending'); docs.sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
+    const container=document.getElementById('verifList'); if(docs.length===0){ container.innerHTML=`<div class="p-12 text-center border border-dashed border-[#2f3336] rounded-2xl"><p class="text-white font-bold">No pending requests</p></div>`; return; }
+    let html=`${duplicates>0?`<div class="mb-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex justify-between items-center"><p class="text-xs text-amber-300">${duplicates} duplicates grouped</p><button onclick="cleanDuplicates()" class="text-[11px] bg-amber-500 text-black px-3 py-1 rounded-full font-bold">Clean</button></div>`:''}`;
+    docs.forEach(r=>{
+      const h=cleanH(r.handle||r.username); const isGlowReq=(r.requestedType||'blue')==='glow';
+      html+=`<div onclick="openVerifModal('${r.id}')" class="cursor-pointer bg-[#0f0f0f] border ${isGlowReq?'border-purple-500/20':'border-[#222]'} rounded-[20px] p-5 hover:border-white/20"><div class="flex items-start gap-4"><div class="w-12 h-12 rounded-full bg-gradient-to-br ${isGlowReq?'from-purple-600 to-pink-600':'from-blue-500 to-purple-600'} flex items-center justify-center font-black text-white overflow-hidden shrink-0">${r.photoURL?`<img src="${r.photoURL}" class="w-full h-full object-cover">`: (r.name?.substring(0,2).toUpperCase()||'U')}</div><div class="flex-1 min-w-0"><div class="flex items-center gap-2 flex-wrap"><h4 class="font-black text-white text-[15px]">${r.name||'User'}</h4><span class="text-xs text-[#71767b]">@${h}</span><span class="ml-auto text-[10px] px-2.5 py-1 rounded-full font-black ${isGlowReq?'bg-purple-500/20 text-purple-300 border border-purple-500/30':'bg-[#1d9bf0]/20 text-[#1d9bf0] border border-[#1d9bf0]/30'}">${isGlowReq?'BLUE+GLOW':'BLUE'}</span></div><p class="text-[12px] text-[#888] mt-1 truncate">${r.category||''} • ${r.reason||'No reason'}</p></div></div></div>`;
+    });
+    container.innerHTML=html; window._verifCache={}; docs.forEach(d=> window._verifCache[d.id]=d);
+  });
+}
+async function openVerifModal(docId){ const r=window._verifCache[docId]; if(!r) return; currentVerif=r; const modal=document.getElementById('verifDetailModal'); modal.classList.remove('hidden'); modal.classList.add('flex'); document.getElementById('vd_name').innerText=r.name||'User'; document.getElementById('vd_handle').innerText='@'+cleanH(r.handle||r.username); document.getElementById('vd_type').innerText=(r.requestedType||'BLUE').toUpperCase(); document.getElementById('vd_reason').innerText=r.reason||r.message||'No reason'; document.getElementById('vd_category').innerText=r.category||'Not specified'; document.getElementById('vd_insta').innerHTML=r.instaLink?`<a href="${r.instaLink}" target="_blank" class="text-blue-400 underline break-all">${r.instaLink}</a>`:'<span class="text-[#666]">No link</span>'; document.getElementById('vd_news').innerHTML=r.newsLink?`<a href="${r.newsLink}" target="_blank" class="text-blue-400 underline break-all">${r.newsLink}</a>`:'<span class="text-[#666]">No link</span>'; document.getElementById('vd_idnum').innerText=r.fullIdNumber||r.idNumber||'Not provided'; const idImg=r.idImage||r.idProof; document.getElementById('vd_idimg').innerHTML=idImg?`<img src="${idImg}" class="w-full rounded-xl border border-[#222]">`:'<p class="text-xs text-[#666]">No ID</p>'; document.getElementById('vd_userId').innerText=r.userId; const statusBox=document.getElementById('vd_eligibility'); statusBox.innerHTML=`<p class="text-[11px] text-[#666]"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Checking...</p>`; document.getElementById('approveBtn').disabled=true; try{ const userSnap=await db.collection('users').doc(r.userId).get(); const u=userSnap.exists?userSnap.data():{}; let html=''; let canApprove=true; if(r.requestedType==='blue'){ if(u.isVerified){ canApprove=false; html=`<div class="p-3 rounded-xl bg-red-500/10 border border-red-500/20"><p class="text-[12px] font-black text-red-400">⛔ Already Blue</p></div>`; } else html=`<div class="p-3 rounded-xl bg-green-500/10 border border-green-500/20"><p class="text-[12px] font-bold text-green-400">✓ Eligible for Blue</p></div>`; } else if(r.requestedType==='glow'){ if(!u.isVerified){ canApprove=false; html=`<div class="p-3 rounded-xl bg-red-500/10 border border-red-500/20"><p class="text-[12px] font-black text-red-400">⛔ No Blue badge</p></div>`; } else{ const verifiedAt=u.verifiedAt?.toDate?u.verifiedAt.toDate():null; if(!verifiedAt){ html=`<div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20"><p class="text-[12px] font-bold text-amber-300">⚠️ No timestamp</p></div>`; } else{ const diffDays=Math.floor((new Date()-verifiedAt)/(1000*60*60*24)); const remaining=REQUIRED_DAYS-diffDays; if(diffDays>=REQUIRED_DAYS){ html=`<div class="p-3 rounded-xl bg-green-500/10 border border-green-500/20"><p class="text-[12px] font-bold text-green-400">✓ Eligible for Glow: ${diffDays}/180 days</p></div>`; } else{ canApprove=false; html=`<div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20"><p class="text-[12px] font-black text-amber-400">🔒 ${remaining} days left</p></div>`; } } } } statusBox.innerHTML=html; const approveBtn=document.getElementById('approveBtn'); approveBtn.disabled=!canApprove; if(canApprove){ approveBtn.classList.remove('opacity-50'); } else approveBtn.classList.add('opacity-50'); }catch(e){ statusBox.innerHTML=`<p class="text-[11px] text-red-400">${e.message}</p>`; } }
+function closeVerifModal(){ document.getElementById('verifDetailModal').classList.add('hidden'); document.getElementById('verifDetailModal').classList.remove('flex'); currentVerif=null; }
+async function cleanDuplicates(){ const snap=await db.collection('verificationRequests').get(); let map=new Map(); let toDelete=[]; snap.forEach(d=>{ const data=d.data(); if(map.has(data.userId)){ const prev=map.get(data.userId); const t1=prev.createdAt?.toMillis?.()||0; const t2=data.createdAt?.toMillis?.()||0; if(t2>t1){ toDelete.push(prev.id); map.set(data.userId,{id:d.id,createdAt:data.createdAt}); } else toDelete.push(d.id);} else map.set(data.userId,{id:d.id,createdAt:data.createdAt}); }); for(let id of toDelete){ await db.collection('verificationRequests').doc(id).delete(); } showToast(`Cleaned ${toDelete.length}`, "success"); }
+async function approveVerif(){ const id=currentVerif?.id; const uid=currentVerif?.userId; const t=currentVerif?.requestedType||'blue'; if(!id||!uid) return; if(!confirm(`Approve ${t.toUpperCase()} for ${currentVerif.name}?`)) return; await db.collection('verificationRequests').doc(id).update({status:'approved',reviewedAt:firebase.firestore.FieldValue.serverTimestamp(), reviewedBy: currentUid}); let update={}; if(t==='blue') update={isVerified:true, verifiedType:'blue', isFeatured:false, hasGlow:false, verifiedAt: firebase.firestore.FieldValue.serverTimestamp()}; else if(t==='glow') update={isVerified:true, verifiedType:'glow', isFeatured:true, hasGlow:true, glowUpgradedAt: firebase.firestore.FieldValue.serverTimestamp()}; await db.collection('users').doc(uid).update(update); showToast(t==='glow'?'⚡ Glow Approved!':'✓ Blue Approved!', t==='glow'?'glow':'blue'); closeVerifModal(); }
+async function rejectVerif(){ const id=currentVerif?.id; if(!id) return; const reason=prompt('Reason?','ID not valid'); if(reason===null) return; await db.collection('verificationRequests').doc(id).update({status:'rejected',rejectReason:reason, reviewedAt: firebase.firestore.FieldValue.serverTimestamp(), reviewedBy: currentUid}); showToast("Rejected", "delete"); closeVerifModal(); }
+async function deleteVerif(){ const delId=currentVerif?.id; if(!delId) return; if(confirm('Delete?')){ await db.collection('verificationRequests').doc(delId).delete(); closeVerifModal(); showToast("Deleted","delete"); } }
+function loadUsers(){ db.collection('users').onSnapshot(snap=>{ allUsers=[]; snap.forEach(d=>allUsers.push({id:d.id,...d.data()})); renderUsers(allUsers); }); }
+function renderUsers(list){ const container=document.getElementById('usersList'); if(list.length===0){ container.innerHTML='<p class="text-xs text-[#71767b] p-4">No users</p>'; return; } let html=''; list.forEach(u=>{ if((u.name==='User'||!u.name)&&!u.username&&!u.handle) return; const isGlow=u.isFeatured||u.hasGlow; const isVer=u.isVerified; const isBanned=u.isBanned; let cardClass="user-card flex items-center gap-3 p-3 bg-[#0f0f0f] border border-[#222] rounded-2xl hover:border-[#333] relative overflow-hidden"; if(u.isFounder) cardClass+="!border-amber-500/40"; else if(isGlow) cardClass+=" glow-card"; else if(isVer) cardClass+=" verified-card"; if(isBanned) cardClass+=" banned-card"; if(u.mustResetPassword) cardClass+="!border-green-500/40"; const handle=cleanH(u.username||u.handle); const verifiedAt=u.verifiedAt?.toDate?u.verifiedAt.toDate():null; let daysText=''; if(isVer&&verifiedAt){ const diff=Math.floor((new Date()-verifiedAt)/(1000*60*60*24)); daysText=`<span class="text-[10px] text-white/30 ml-2">${diff}d ${u.verifiedType||'blue'}</span>`; } html+=`<div id="user-${u.id}" class="${cardClass}"><div class="w-10 h-10 rounded-full ${u.isFounder?'bg-gradient-to-br from-amber-300 to-orange-600': isGlow?'bg-gradient-to-tr from-[#c084fc] to-[#38bdf8]': isVer?'bg-gradient-to-br from-[#1d9bf0] to-blue-600':'bg-gradient-to-br from-zinc-700 to-zinc-900'} flex items-center justify-center font-bold text-white overflow-hidden flex-shrink-0">${u.photoURL?`<img src="${u.photoURL}" class="w-full h-full object-cover">`: (u.name||'U').substring(0,2).toUpperCase()}</div><div class="flex-1 min-w-0"><p class="text-sm font-bold truncate flex items-center flex-wrap ${isGlow?'featured-name': u.isFounder?'text-amber-200':'text-white'}">${u.name||'User'} ${getUserTags(u)} ${daysText}</p><p class="text-[11px] text-[#71767b] truncate">@${handle} • ${u.email||''}</p></div><div class="flex items-center gap-1"><button onclick="manualVerify('${u.id}','blue')" class="w-7 h-7 rounded-full bg-[#1d9bf0]/20 text-[#1d9bf0] flex items-center justify-center"><i class="fa-solid fa-check text-[10px]"></i></button><button onclick="manualVerify('${u.id}','glow')" class="w-7 h-7 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center"><i class="fa-solid fa-bolt text-[10px]"></i></button><button onclick="manualVerify('${u.id}','none')" class="w-7 h-7 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center"><i class="fa-solid fa-xmark text-[10px]"></i></button><button onclick="openBanModal('${u.id}')" class="w-7 h-7 rounded-full ${u.isBanned?'bg-green-500/20 text-green-400':'bg-amber-500/20 text-amber-400'} flex items-center justify-center"><i class="fa-solid ${u.isBanned?'fa-unlock':'fa-ban'} text-[10px]"></i></button><button onclick="deleteUser('${u.id}')" class="w-7 h-7 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center"><i class="fa-solid fa-trash text-[10px]"></i></button></div></div>`; }); container.innerHTML=html; }
+function searchUsers(v){ const q=v.toLowerCase(); const f=allUsers.filter(u=> (u.name||'').toLowerCase().includes(q) || cleanH(u.username||u.handle||'').includes(q) || (u.email||'').toLowerCase().includes(q)); renderUsers(f); }
+async function manualVerify(uid,type){ if(!confirm(`Give ${type} to this user?`)) return; let data={}; if(type==='blue') data={isVerified:true,verifiedType:'blue',isFeatured:false,hasGlow:false, verifiedAt: firebase.firestore.FieldValue.serverTimestamp()}; if(type==='glow') data={isVerified:true,verifiedType:'glow',isFeatured:true,hasGlow:true, glowUpgradedAt: firebase.firestore.FieldValue.serverTimestamp(), verifiedAt: firebase.firestore.FieldValue.serverTimestamp()}; if(type==='none') data={isVerified:false,verifiedType:'none',isFeatured:false,hasGlow:false, verifiedAt: firebase.firestore.FieldValue.delete()}; await db.collection('users').doc(uid).update(data); showToast(type==='blue'?"✓ Blue":"⚡ Glow","blue"); }
+function loadPunishments(){ db.collection('users').where('isBanned','==',true).onSnapshot(snap=>{ const container=document.getElementById('punishList'); if(snap.empty){ container.innerHTML=`<div class="p-10 text-center border border-dashed border-[#222] rounded-2xl"><p class="font-bold text-white">No active restrictions</p></div>`; return; } let html=''; snap.forEach(d=>{ const u=d.data(); const id=d.id; html+=`<div class="p-4 bg-[#0f0f0f] border border-red-500/20 rounded-2xl flex gap-3"><div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-white overflow-hidden">${u.photoURL?`<img src="${u.photoURL}" class="w-full h-full object-cover">`: (u.name||'U')[0]}</div><div class="flex-1"><p class="text-sm font-bold text-white">${u.name||'User'} @${cleanH(u.username||'user')}</p><p class="text-[11px] text-[#aaa] mt-1">${u.banReason||'No reason'}</p></div><div class="flex flex-col gap-1"><button onclick="unbanUser('${id}')" class="px-3 py-1.5 bg-green-500/20 border border-green-500/30 text-green-400 text-[11px] font-bold rounded-full">Restore</button></div></div>`; }); container.innerHTML=html; }); }
+async function unbanUser(uid){ await db.collection('users').doc(uid).update({isBanned:false, banReason: firebase.firestore.FieldValue.delete()}); showToast("✅ Restored", "success"); }
+function openBanModal(uid){ banTargetUid=uid; document.getElementById('banModal').classList.remove('hidden'); document.getElementById('banModal').classList.add('flex'); }
+function closeBanModal(){ document.getElementById('banModal').classList.add('hidden'); document.getElementById('banModal').classList.remove('flex'); banTargetUid=null; }
+document.addEventListener('DOMContentLoaded',()=>{ document.getElementById('banReasonSelect')?.addEventListener('change', (e)=>{ if(e.target.value==='__custom__') document.getElementById('customBanWrap').classList.remove('hidden'); else{ document.getElementById('customBanWrap').classList.add('hidden'); document.getElementById('customBanReason').value=e.target.value; } }); });
+async function confirmBan(){ if(!banTargetUid) return; let reason=document.getElementById('banReasonSelect').value==='__custom__'? document.getElementById('customBanReason').value : document.getElementById('customBanReason').value||document.getElementById('banReasonSelect').value; if(!reason){ alert('Select reason'); return; } await db.collection('users').doc(banTargetUid).update({isBanned:true, banReason: reason, bannedAt: firebase.firestore.FieldValue.serverTimestamp()}); showToast(`⛔ Banned`, "ban"); closeBanModal(); }
+async function deleteUser(uid){ if(!confirm('DELETE PERMANENTLY?')) return; const posts=await db.collection('posts').where('userId','==',uid).get(); for(let d of posts.docs) await d.ref.delete(); await db.collection('users').doc(uid).delete(); showToast("🗑️ Deleted", "delete"); }
+function loadReports(){ db.collection('reports').onSnapshot(snap=>{ let html=''; if(snap.empty) html='<div class="p-8 text-center text-[#71767b] text-xs border border-dashed border-[#222] rounded-2xl">No reports</div>'; snap.forEach(d=>{ const r=d.data(); html+=`<div class="p-3 bg-[#0f0f0f] border border-[#222] rounded-xl flex justify-between items-center"><span class="text-xs text-white">Post: ${r.postId?.substring(0,10)} | ${r.reason}</span><button onclick="db.collection('reports').doc('${d.id}').delete()" class="text-[11px] text-red-400">Remove</button></div>`; }); document.getElementById('reportsList').innerHTML=html; }); }
+
+// === FINAL SECURITY UNLOCK - UPDATED FOR password_reset.html FLOW ===
+function loadUnlockRequests(){
+  db.collection('securityVerifications').orderBy('createdAt','desc').onSnapshot(snap=>{
+    const container=document.getElementById('unlocksList');
+    if(snap.empty){ container.innerHTML=`<div class="p-12 text-center border border-dashed border-[#2f3336] rounded-2xl"><p class="text-white font-bold">No unlock requests</p><p class="text-[11px] text-[#666] mt-2">Aadhar + Face will appear here</p></div>`; return; }
+    let html='';
+    snap.forEach(doc=>{
+      const d=doc.data();
+      const time=d.createdAt?.toDate?d.createdAt.toDate().toLocaleString():'Now';
+      const pending=d.status==='pending_founder_approval';
+      const rejected=d.status==='rejected_by_founder';
+      const approved=d.status==='approved_by_founder';
+      let cooldownInfo='';
+      if(rejected && d.rejectedAt){
+        const rejDate=d.rejectedAt.toDate?d.rejectedAt.toDate():new Date(d.rejectedAt);
+        const nextDate=new Date(rejDate.getTime()+30*24*60*60*1000);
+        const remaining=nextDate - new Date();
+        const daysLeft=Math.ceil(remaining/(24*60*60*1000));
+        if(remaining>0){
+          cooldownInfo=`<div class="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20"><p class="text-[11px] font-black text-red-400">⏳ COOLDOWN: ${daysLeft} days left</p><p class="text-[10px] text-zinc-400 mt-1">Rejected on ${rejDate.toLocaleDateString()} - Can reapply on ${nextDate.toLocaleDateString()}</p><div class="mt-2 h-1.5 bg-[#222] rounded-full overflow-hidden"><div class="h-full bg-red-500" style="width:${(remaining/(30*24*60*60*1000)*100)}%"></div></div></div>`;
+        } else {
+          cooldownInfo=`<div class="mt-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20"><p class="text-[11px] font-bold text-green-400">✓ Cooldown Over - Can Reapply</p></div>`;
+        }
+      }
+      html+=`<div class="rounded-[20px] bg-[#0f0f0f] border ${pending?'border-amber-500/30':rejected?'border-red-500/20':approved?'border-green-500/20':'border-[#222]'} p-5">
+        <div class="flex justify-between items-start gap-3"><div class="min-w-0 flex-1"><p class="font-black text-white text-[14px] truncate">${d.email||'No email'}</p><p class="text-[11px] text-zinc-400 font-mono mt-1">Aadhar: <b class="text-white">${d.aadharFull||'----'}</b> | Last4: ${d.aadharLast4||''}</p><p class="text-[10px] text-zinc-600 mt-1">${time}</p><span class="inline-flex mt-2 px-2.5 py-1 rounded-full text-[9px] font-black ${pending?'bg-amber-500/15 text-amber-300 border border-amber-500/20':approved?'bg-green-500/15 text-green-300 border border-green-500/20':'bg-red-500/15 text-red-300 border border-red-500/20'}">${(d.status||'').toUpperCase()}</span>${d.rejectReason?`<p class="mt-2 text-[11px] text-red-300/70 bg-red-500/5 border border-red-500/10 p-2 rounded-xl">Reason: ${d.rejectReason}</p>`:''}</div><button onclick="deleteUnlock('${doc.id}')" class="w-8 h-8 rounded-full bg-white/5 border border-white/10 text-zinc-500"><i class="fa-solid fa-trash text-[10px]"></i></button></div>
+        <div class="grid grid-cols-2 gap-3 mt-4"><div class="bg-black border border-white/10 rounded-2xl overflow-hidden"><p class="p-2 text-[9px] font-black tracking-widest bg-white/5">AADHAR PHOTO</p>${d.aadharImage?`<img src="${d.aadharImage}" class="w-full h-[200px] object-contain bg-[#111]">`:'<p class="p-6 text-center text-[11px] text-zinc-600">No image</p>'}</div><div class="bg-black border border-white/10 rounded-2xl overflow-hidden"><p class="p-2 text-[9px] font-black tracking-widest bg-white/5">FACE VIDEO (10s)</p>${d.faceVideo?`<video src="${d.faceVideo}" controls class="w-full h-[200px] bg-black"></video>`:'<p class="p-6 text-center text-[11px] text-zinc-600">No video</p>'}</div></div>
+        ${cooldownInfo}
+        ${pending?`<div class="flex gap-2 mt-5"><button onclick="approveUnlock('${d.email}','${doc.id}')" class="flex-1 bg-green-500 text-black font-black py-3 rounded-full text-[12px] shadow-[0_0_20px_rgba(34,197,94,0.3)]">✓ Approve → password_reset.html</button><button onclick="rejectUnlock('${doc.id}','${d.email}')" class="flex-1 bg-red-500/10 border border-red-500/20 text-red-300 font-black py-3 rounded-full text-[12px]">✗ Reject → 30D</button></div>`:rejected?`<p class="text-[11px] text-zinc-500 text-center mt-4">Rejected - User sees timer in application_status.html</p>`:`<p class="text-[11px] text-green-400 text-center mt-4">✓ Approved - Login button now → password_reset.html (separate page)</p>`}
+      </div>`;
+    });
+    container.innerHTML=html;
+  });
+}
+
+// UPDATED: APPROVE → password_reset.html SEPARATE PAGE
+async function approveUnlock(email, verifId){
+  if(!confirm('Approve '+email+'?\n\nON APPROVAL:\n- auth.html Login button will redirect to password_reset.html (SEPARATE PAGE)\n- User must enter Secret Key + New Password there\n- Login BLOCKED until reset\n\nApprove?')) return;
+  try{
+    const q=await db.collection('users').where('email','==',email.toLowerCase()).limit(1).get();
+    if(!q.empty){
+      await q.docs[0].ref.update({
+        isSecurityLocked: false,
+        securityApproved: true,
+        mustResetPassword: true,
+        lastApprovedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    await db.collection('securityVerifications').doc(verifId).update({
+      status: 'approved_by_founder',
+      approvedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showToast('✅ Approved! Login → password_reset.html', 'success');
+  }catch(e){ alert(e.message); }
+}
+
+async function rejectUnlock(verifId, email){
+  const reason = prompt('Enter rejection reason (User will see + 30 days cooldown in application_status.html):','Aadhar not clear / Face mismatch');
+  if(reason===null) return;
+  await db.collection('securityVerifications').doc(verifId).update({
+    status: 'rejected_by_founder',
+    rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    rejectReason: reason
+  });
+  const q=await db.collection('users').where('email','==',email.toLowerCase()).limit(1).get();
+  if(!q.empty){
+    await q.docs[0].ref.update({
+      isSecurityLocked: true,
+      securityApproved: false,
+      mustResetPassword: false,
+      lastRejectedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+  showToast('Rejected - 30 days cooldown → application_status.html', 'ban');
+}
+
+async function deleteUnlock(id){ if(confirm('Delete this record?')) await db.collection('securityVerifications').doc(id).delete(); }
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+body{background:#000;color:#e7e9ea;font-family:Inter,sans-serif}.hidden{display:none!important}
+#toastContainer{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+#toastContainer > *{pointer-events:auto}
+.toast-enter{animation:toastIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275) forwards}
+.toast-exit{animation:toastOut 0.4s ease-in forwards}
+@keyframes toastIn{0%{transform:translateX(120%) scale(0.8);opacity:0}100%{transform:translateX(0) scale(1);opacity:1}}
+@keyframes toastOut{0%{transform:translateX(0) scale(1);opacity:1}100%{transform:translateX(120%) scale(0.8);opacity:0}}
+</style>
+</head>
+<body>
+<div id="toastContainer"></div>
+<div id="loader" class="fixed inset-0 bg-black flex items-center justify-center z-50"><div class="w-8 h-8 border-2 border-zinc-800 border-t-white rounded-full animate-spin"></div></div>
+<div id="mainApp" style="display:none" class="w-full min-h-screen flex">
+  <div class="w-64 border-r border-[#1a1a1a] p-4 flex flex-col sticky top-0 h-screen bg-[#080808]">
+    <h1 class="font-black text-white text-[18px]">UMBRELLA<span class="text-amber-400"> ADMIN</span></h1>
+    <p class="text-[10px] text-[#555] tracking-[2px] mt-1">CONTROL CENTER • password_reset FLOW</p>
+    <nav class="mt-8 space-y-1">
+      <button id="tab-dashboard" onclick="switchTab('dashboard')" class="side-tab w-full flex items-center gap-3 px-4 py-3 rounded-full text-sm font-bold bg-white text-black"><i class="fa-solid fa-chart-line w-5"></i> Dashboard</button>
+      <button id="tab-verifications" onclick="switchTab('verifications')" class="side-tab w-full flex items-center gap-3 px-4 py-3 rounded-full text-sm font-bold text-[#777] relative"><i class="fa-solid fa-circle-check w-5"></i> Verifications <span class="verifBadge hidden absolute right-3 bg-red-500 text-white text-[10px] w-5 h-5 items-center justify-center rounded-full">0</span></button>
+      <button id="tab-unlocks" onclick="switchTab('unlocks')" class="side-tab w-full flex items-center gap-3 px-4 py-3 rounded-full text-sm font-bold text-[#777] relative"><i class="fa-solid fa-lock-open w-5 text-amber-400"></i> Unlock Requests <span id="unlockBadge" class="hidden absolute right-3 bg-amber-500 text-black text-[10px] w-5 h-5 items-center justify-center rounded-full font-black">0</span></button>
+      <button id="tab-users" onclick="switchTab('users')" class="side-tab w-full flex items-center gap-3 px-4 py-3 rounded-full text-sm font-bold text-[#777]"><i class="fa-solid fa-users w-5"></i> Users</button>
+      <button id="tab-punishments" onclick="switchTab('punishments')" class="side-tab w-full flex items-center gap-3 px-4 py-3 rounded-full text-sm font-bold text-[#777] relative"><i class="fa-solid fa-gavel w-5"></i> Punishments <span id="statPunish" class="absolute right-3 bg-amber-500 text-black text-[10px] px-2 py-0.5 rounded-full font-black">0</span></button>
+      <button id="tab-reports" onclick="switchTab('reports')" class="side-tab w-full flex items-center gap-3 px-4 py-3 rounded-full text-sm font-bold text-[#777]"><i class="fa-solid fa-flag w-5"></i> Reports</button>
+      <a href="admin_support.html" class="group relative px-5 py-2.5 rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white font-black text-[11px] tracking-widest flex items-center gap-2 mt-2"><span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center"><i class="fa-solid fa-shield-heart text-[10px]"></i></span> WOMEN SAFETY <span class="ml-1 px-2 py-0.5 rounded-full bg-white text-pink-600 text-[9px] font-black" id="womenBadge">0</span></a>
+    </nav>
+
+    <div class="flex gap-2 mt-5"></div>
+
+    <!-- BACK TO FOUNDER ERP BUTTON -->
+<a href="founder_erp.html" class="group inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-[#0e0e10] border border-[#222] hover:border-[#1d9bf0]/50 hover:bg-[#111] transition-all duration-300">
+  <div class="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center group-hover:bg-[#1d9bf0] group-hover:text-white transition-all">
+    <i class="fa-solid fa-arrow-left text-[11px]"></i>
+  </div>
+  <span class="text-[11px] font-black tracking-widest text-white">FOUNDER ERP</span>
+  <span class="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#222] flex items-center justify-center">
+    <i class="fa-solid fa-crown text-[8px] text-amber-400"></i>
+  </span>
+</a>
+  </div>
+  <div class="flex-1 p-8 max-w-[900px]">
+    <div id="dashboardPane" class="tab-pane">
+      <h2 class="text-2xl font-black text-white">Overview - FINAL password_reset FLOW</h2>
+      <p class="text-[12px] text-white/40 mt-2">Submit → application_status.html (pending) → Approve → password_reset.html (separate page) → Login blocked until reset via Secret Key. Reject → 30D cooldown in application_status.html</p>
+      <div class="grid grid-cols-5 gap-4 mt-6">
+        <div class="bg-[#0f0f0f] border border-[#222] rounded-2xl p-5"><p class="text-[11px] text-[#666]">TOTAL USERS</p><p id="statUsers" class="text-2xl font-black text-white mt-2">0</p></div>
+        <div class="bg-[#0f0f0f] border border-amber-500/20 rounded-2xl p-5"><p class="text-[11px] text-[#666]">PENDING VERIF</p><p id="statVerif" class="text-2xl font-black text-amber-400 mt-2">0</p></div>
+        <div class="bg-[#0f0f0f] border border-green-500/20 rounded-2xl p-5 relative overflow-hidden"><p class="text-[11px] text-[#666] flex items-center gap-1"><i class="fa-solid fa-lock-open text-green-400"></i> UNLOCK REQ</p><p id="statUnlocks" class="text-2xl font-black text-green-400 mt-2">0</p><p class="text-[9px] text-zinc-600 mt-1">Approve → password_reset</p></div>
+        <div class="bg-[#0f0f0f] border border-[#222] rounded-2xl p-5"><p class="text-[11px] text-[#666]">REPORTS</p><p id="statReports" class="text-2xl font-black text-red-400 mt-2">0</p></div>
+        <div class="bg-[#0f0f0f] border border-[#222] rounded-2xl p-5"><p class="text-[11px] text-[#666]">RESTRICTED</p><p id="statBanned" class="text-2xl font-black text-zinc-400 mt-2">0</p></div>
+      </div>
+      <div class="mt-6 p-4 rounded-2xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20 flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center text-green-400"><i class="fa-solid fa-check"></i></div><div><p class="text-[13px] font-black text-white">NEW FLOW: Login → password_reset.html</p><p class="text-[11px] text-zinc-400">On approve, user login button redirects to SEPARATE password_reset.html page. Must enter Secret Key there to unlock.</p></div></div><button onclick="switchTab('unlocks')" class="px-4 py-2 rounded-full bg-green-500 text-black font-black text-[11px]">View Requests →</button></div>
+    </div>
+    <div id="verificationsPane" class="tab-pane hidden"><h2 class="text-xl font-black text-white mb-6">Verification Requests</h2><div id="verifList" class="space-y-3"></div></div>
+    <div id="unlocksPane" class="tab-pane hidden"><h2 class="text-xl font-black text-white mb-2">🔒 Security Unlock Requests - password_reset FLOW</h2><p class="text-[11px] text-zinc-500 mb-6">Pending → application_status.html | Approve → password_reset.html (separate) | Reject → 30 days cooldown</p><div id="unlocksList" class="grid grid-cols-1 gap-4"></div></div>
+    <div id="usersPane" class="tab-pane hidden"><div class="flex items-center justify-between mb-6"><h2 class="text-xl font-black text-white">Users</h2><input oninput="searchUsers(this.value)" placeholder="Search..." class="bg-[#111] border border-[#222] rounded-full px-4 py-2 text-xs text-white outline-none w-64"></div><div id="usersList" class="space-y-2"></div></div>
+    <div id="punishmentsPane" class="tab-pane hidden"><h2 class="text-xl font-black text-white mb-2">Punishments</h2><div id="punishList" class="space-y-3 mt-4"></div></div>
+    <div id="reportsPane" class="tab-pane hidden"><h2 class="text-xl font-black text-white mb-6">Reports</h2><div id="reportsList" class="space-y-2"></div></div>
+  </div>
+</div>
+<div id="verifDetailModal" class="hidden fixed inset-0 z-[200] bg-black/80 backdrop-blur-xl items-center justify-center p-4"><div class="bg-[#121212] border border-[#222] rounded-[24px] w-full max-w-[560px] max-h-[90vh] overflow-y-auto"><div class="p-5 border-b border-[#222] flex items-center justify-between sticky top-0 bg-[#121212] z-10"><h3 class="font-black text-white">Verification Application</h3><button onclick="closeVerifModal()" class="w-8 h-8 rounded-full bg-[#222] flex items-center justify-center"><i class="fa-solid fa-xmark text-xs"></i></button></div><div class="p-5 space-y-4"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-black text-white" id="vd_avatar">K</div><div><p id="vd_name" class="font-bold text-white">User</p><p id="vd_handle" class="text-xs text-[#777]">@handle</p></div><span id="vd_type" class="ml-auto px-3 py-1 rounded-full text-[10px] font-black">BLUE</span></div><div id="vd_eligibility" class="p-3 bg-[#0a0a0a] border border-[#222] rounded-xl"><p class="text-[11px] text-[#666]">Checking...</p></div><div class="space-y-3"><div class="p-3 bg-black/60 border border-[#222] rounded-xl"><p class="text-[10px] text-[#555] tracking-widest font-black">CATEGORY</p><p id="vd_category" class="text-[13px] text-white mt-1"></p></div><div class="p-3 bg-black/60 border border-[#222] rounded-xl"><p class="text-[10px] text-[#555] tracking-widest font-black">REASON</p><p id="vd_reason" class="text-[13px] text-white mt-1"></p></div><div class="p-3 bg-black/60 border border-[#222] rounded-xl"><p class="text-[10px] text-[#555] tracking-widest font-black">INSTAGRAM LINK</p><p id="vd_insta" class="text-[13px] mt-1 break-all"></p></div><div class="p-3 bg-black/60 border border-[#222] rounded-xl"><p class="text-[10px] text-[#555] tracking-widest font-black">NEWS LINK</p><p id="vd_news" class="text-[13px] mt-1 break-all"></p></div><div class="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl"><p class="text-[10px] text-amber-400 tracking-widest font-black">ID NUMBER</p><p id="vd_idnum" class="text-[13px] font-mono text-white mt-1"></p></div><div class="p-3 bg-black/60 border border-[#222] rounded-xl"><p class="text-[10px] text-[#555] tracking-widest font-black">ID PROOF IMAGE</p><div id="vd_idimg" class="mt-2"></div></div><div class="p-2 bg-[#1a1a1a] rounded-xl"><p class="text-[10px] text-[#555]">USER ID</p><p id="vd_userId" class="text-[10px] font-mono text-[#888] break-all"></p></div></div><div class="flex gap-2 pt-2"><button id="approveBtn" onclick="approveVerif()" class="flex-1 py-3 bg-[#1d9bf0] text-white font-black rounded-full text-[13px]">✓ APPROVE</button><button onclick="rejectVerif()" class="flex-1 py-3 bg-red-500/10 border border-red-500/30 text-red-400 font-bold rounded-full text-[13px]">✕ REJECT</button></div><button onclick="deleteVerif()" class="w-full py-2 text-[11px] text-[#555] underline">Delete</button></div></div></div>
+<div id="banModal" class="hidden fixed inset-0 z-[100] bg-black/80 backdrop-blur-md items-center justify-center p-4"><div class="bg-[#111] border border-[#222] rounded-[24px] w-full max-w-[440px]"><div class="p-5 border-b border-[#222] flex items-center justify-between"><h3 class="font-black text-white">Restrict Account</h3><button onclick="closeBanModal()" class="w-8 h-8 rounded-full bg-[#222] text-[#888] flex items-center justify-center"><i class="fa-solid fa-xmark text-xs"></i></button></div><div class="p-5 space-y-4"><div><select id="banReasonSelect" class="w-full bg-black border border-[#2f3336] rounded-xl px-3 py-3 text-[13px] text-white"><option value="">Choose reason...</option><option value="Spam">Spam</option><option value="Abusive Behavior">Abusive Behavior</option><option value="__custom__">Custom...</option></select></div><div id="customBanWrap" class="hidden"><textarea id="customBanReason" rows="3" class="w-full bg-black border border-[#2f3336] rounded-xl px-3 py-2.5 text-[13px] text-white"></textarea></div><div class="flex gap-2"><button onclick="closeBanModal()" class="flex-1 bg-[#222] text-white font-bold py-3 rounded-full text-sm">Cancel</button><button onclick="confirmBan()" class="flex-1 bg-white text-black font-black py-3 rounded-full text-sm">Apply</button></div></div></div></div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+

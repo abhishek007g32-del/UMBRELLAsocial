@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile / UMBRELLAsocial • Secure</title>
+<script>(function(){ try{ const c=JSON.parse(localStorage.getItem('umbrella_ban_cache')||'null'); if(c&&c.banned){ const u=c.until?new Date(c.until):null; if(!u||u>new Date()){ if(!location.pathname.includes('banned.html')) location.replace('banned.html'); }} }catch(e){} })();</script>
+<style>#mainApp{display:none} #banCheckLoader{display:flex}</style>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyC4DGER69Xfc3P_xcQR5RtXH3oBuLP9rKY",authDomain:"umbrellasocial.firebaseapp.com",projectId:"umbrellasocial",storageBucket:"umbrellasocial.firebasestorage.app",messagingSenderId:"126237795119",appId:"1:126237795119:web:db54ac49f178e0136bf7da"};
+if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore(); const auth=firebase.auth();
+let currentUid=null, profileUid=null, isOwnProfile=true, currentUserData={}, selectedProfilePicBase64='', activeTab='posts', followingCache=new Set();
+let allMutualsCache=[], isMutualExpanded=false;
+
+function cleanH(h){ return (h||'user').toString().replace(/@/g,'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'')||'user'; }
+function escapeHtml(t){ return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function getSingleTag(u){
+  if(!u) return '';
+  let badges=''; if(u.isVerified) badges+=`<i class="fa-solid fa-circle-check text-[#1d9bf0] text-[13px] ml-1"></i>`; if(u.isFeatured) badges+=`<i class="fa-solid fa-bolt text-purple-400 text-[11px] ml-0.5"></i>`;
+  if(u.isFounder) return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-300 to-orange-500 text-black text-[9px] font-black tracking-widest"><i class="fa-solid fa-crown text-[8px]"></i> FOUNDER</span>`+badges;
+  if(u.isStaff){ const role=(u.staffRole||'SUPPORT STAFF').toUpperCase(); return `<span class="inline-flex px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] font-black">${role}</span>`+badges; }
+  return badges;
+}
+function formatTime(ts){ if(!ts) return 'now'; try{ const d=ts.toDate?ts.toDate():new Date(ts); const s=Math.floor((new Date()-d)/1000); if(s<60) return 'now'; const m=Math.floor(s/60); if(m<60) return m+'m'; const h=Math.floor(m/60); if(h<24) return h+'h'; return Math.floor(h/24)+'d'; }catch(e){ return 'now'; } }
+function isOwnerAccount(data){ const name=(data.name||'').toLowerCase(); const handle=cleanH(data.username||data.handle||''); return data.isFounder||name.includes('abhishek ganguly')||handle==='abhishekganguly'||data.isAdmin===true; }
+const RANDOM_BIOS=["Just vibing ☂️","Building cool stuff","Dreamer | Creator | Explorer","Coffee + Code = Life","Living my best life ✨","Made in India 🇮🇳","UMBRELLAsocial user"];
+function sanitizeBio(data){ let bio=(data.bio||'').trim(); if(!bio) return RANDOM_BIOS[Math.floor(Math.random()*RANDOM_BIOS.length)]; if(isOwnerAccount(data)) return bio; const lower=bio.toLowerCase(); if(['founder','co-founder','staff','team member','member of umbrella','official','ceo','admin of umbrella'].some(w=>lower.includes(w))) return RANDOM_BIOS[Math.floor(Math.random()*RANDOM_BIOS.length)]; return bio; }
+
+document.addEventListener('DOMContentLoaded',()=>{
+ const logged=localStorage.getItem('umbrella_is_logged_in');
+ auth.onAuthStateChanged(async u=>{
+  if(u && logged==='true'){
+   currentUid=u.uid;
+   const viewedUid=new URLSearchParams(window.location.search).get('uid');
+   profileUid=viewedUid||currentUid; isOwnProfile=profileUid===currentUid;
+   const fSnap=await db.collection('follows').where('followerId','==',currentUid).get(); fSnap.forEach(d=> followingCache.add(d.data().followingId));
+   db.collection('users').doc(currentUid).onSnapshot(snap=>{ if(snap.exists&&snap.data().isBanned){ location.replace('banned.html'); }});
+   db.collection('users').doc(profileUid).onSnapshot(snap=>{
+    if(!snap.exists){ document.getElementById('banCheckLoader').style.display='none'; document.getElementById('mainApp').style.display='block'; return; }
+    currentUserData=snap.data(); renderProfile(currentUserData);
+    document.getElementById('banCheckLoader').style.display='none'; document.getElementById('mainApp').style.display='block';
+    switchTab('posts'); loadMutualConnections(profileUid, currentUid);
+   });
+  } else location.href='auth.html';
+ });
+});
+
+function renderProfile(data){
+ const name=data.name||'User'; const handle=cleanH(data.username||data.handle);
+ const isVer=!!data.isVerified; const isFeat=!!data.isFeatured && isVer;
+ const isFounder=!!data.isFounder; const isStaff=!!data.isStaff;
+ const pic=data.photoURL||data.profilePic||''; const initials=name.split(' ').filter(Boolean).map(x=>x[0]).join('').substring(0,2).toUpperCase();
+ const avatarEl=document.getElementById('profileAvatar');
+ const glowClass = (isFeat||isFounder)? 'founder-glow-avatar' : '';
+ avatarEl.className = `w-[76px] h-[76px] rounded-full flex items-center justify-center font-black text-white text-xl overflow-hidden -mt-9 ml-1 border-[3px] border-[#08080a] relative z-10 ${isFounder?'bg-gradient-to-br from-amber-300 to-orange-600 border-amber-300 shadow-[0_0_20px_rgba(251,191,36,0.5)]': isFeat?'bg-gradient-to-br from-[#c084fc] to-[#38bdf8] border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.5)]':'bg-white/10 border-white/10'} ${glowClass}`;
+ avatarEl.innerHTML=pic?`<img src="${pic}" class="w-full h-full object-cover">`:`${initials}`;
+
+ const bannerEl=document.getElementById('profileBanner');
+ if(isFounder){
+   bannerEl.className = "h-[190px] w-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-400 via-orange-500 to-yellow-600 relative overflow-hidden";
+   bannerEl.innerHTML = `<div class="absolute inset-0 bg-black/10"></div><h1 class="text-black font-black text-[26px] flex items-center gap-2 relative z-10 tracking-tight"><i class="fa-solid fa-crown text-[20px]"></i>FOUNDER</h1><p class="text-black/70 text-[10px] font-black tracking-[3px] mt-1 uppercase relative z-10">UMBRELLAsocial • Vault Secured</p>`;
+ } else if(isStaff){
+   bannerEl.className = "h-[190px] w-full flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 to-black border-b border-amber-500/20 relative";
+   bannerEl.innerHTML = `<h1 class="text-amber-400 font-black text-[18px] flex items-center gap-2 tracking-widest"><i class="fa-solid fa-shield-halved"></i>${(data.staffRole||'STAFF').toUpperCase()} TEAM</h1><p class="text-white/30 text-[10px] font-bold tracking-[2px] mt-1 uppercase">Staff Member • Verified</p>`;
+ } else {
+   bannerEl.className = "h-[190px] w-full flex flex-col items-center justify-center bg-gradient-to-br from-[#0e4a7a] via-[#1a1a5e] to-[#2d0b5a] relative";
+   bannerEl.innerHTML = `<h1 class="text-white font-black text-[26px] flex items-center gap-2"><i class="fa-solid fa-umbrella text-white/80 text-[20px]"></i>UMBRELLAsocial</h1><p class="text-white/50 text-[10px] font-bold tracking-[3px] mt-1 uppercase">Secure Vault • By Abhishek Ganguly</p>`;
+ }
+
+ document.getElementById('profileName').innerHTML=`<span class="${isFeat||isFounder?'featured-name':''}">${escapeHtml(name)}</span> <span class="inline-flex items-center ml-1">${getSingleTag(data)}</span>`;
+ document.getElementById('profileNameTop').innerText=name;
+ document.getElementById('profileHandle').innerText='@'+handle + (isFounder?' • Founder • Immutable': isStaff?' • Staff':'');
+ document.getElementById('profileBio').innerText=sanitizeBio(data);
+ document.getElementById('ownProfileActions').classList.toggle('hidden',!isOwnProfile);
+ document.getElementById('otherProfileActions').classList.toggle('hidden', isOwnProfile);
+ if(!isOwnProfile) updateFollowButtonState();
+}
+
+async function updateFollowButtonState(){
+ if(!profileUid || profileUid===currentUid) return;
+ const followBtn=document.getElementById('followBtn');
+ const statusMsg=document.getElementById('followStatusMsg');
+ try{
+   const [iFollowSnap, theyFollowSnap] = await Promise.all([
+     db.collection('follows').where('followerId','==',currentUid).where('followingId','==',profileUid).limit(1).get(),
+     db.collection('follows').where('followerId','==',profileUid).where('followingId','==',currentUid).limit(1).get()
+   ]);
+   const iFollow=!iFollowSnap.empty; const theyFollow=!theyFollowSnap.empty;
+   if(iFollow && theyFollow){
+     followBtn.innerText='Following'; followBtn.className='border border-white/20 hover:border-red-500/50 hover:text-red-400 text-white font-bold px-5 py-1.5 rounded-full text-[12px] transition-all';
+     statusMsg.style.display='none';
+   } else if(iFollow &&!theyFollow){
+     followBtn.innerText='Waiting'; followBtn.className='bg-white/10 border border-white/10 text-white/50 font-bold px-5 py-1.5 rounded-full text-[11px]';
+     statusMsg.style.display='block'; statusMsg.innerHTML=`<i class="fa-solid fa-clock mr-1"></i> You followed — waiting for follow back.`;
+   } else if(!iFollow && theyFollow){
+     followBtn.innerText='Follow Back'; followBtn.className='bg-white text-black font-bold px-5 py-1.5 rounded-full text-[12px]';
+     statusMsg.style.display='block'; statusMsg.innerHTML=`<i class="fa-solid fa-user-plus mr-1"></i> Follows you — follow back to unlock.`;
+   } else {
+     followBtn.innerText='Follow'; followBtn.className='bg-white text-black font-bold px-5 py-1.5 rounded-full text-[12px] hover:bg-white/90'; statusMsg.style.display='none';
+   }
+ }catch(e){}
+}
+async function getFollowingIds(uid){ const snap=await db.collection('follows').where('followerId','==',uid).get().catch(()=>({docs:[]})); return snap.docs.map(d=>d.data().followingId); }
+async function getFollowerIds(uid){ const snap=await db.collection('follows').where('followingId','==',uid).get().catch(()=>({docs:[]})); return snap.docs.map(d=>d.data().followerId); }
+async function getUserDocsByIds(ids){
+  if(ids.length===0) return [];
+  let chunks=[]; for(let i=0;i<ids.length;i+=10) chunks.push(ids.slice(i,i+10));
+  let users=[];
+  for(let chunk of chunks){
+    try{ const snap=await db.collection('users').where(firebase.firestore.FieldPath.documentId(),'in',chunk).get(); snap.forEach(d=>users.push({id:d.id,...d.data()})); }catch(e){}
+  }
+  return users;
+}
+async function loadMutualConnections(viewedUid, currentUidParam){
+  const section=document.getElementById('mutualSection'); const listEl=document.getElementById('mutualList'); const countEl=document.getElementById('mutualCount'); const lockedEl=document.getElementById('mutualLocked'); const titleEl=document.getElementById('mutualTitle'); const viewAllBtn=document.getElementById('mutualViewAll'); const isOwn = viewedUid===currentUidParam;
+  listEl.innerHTML=`<p class="text-[11px] text-white/20 animate-pulse p-2">Loading mutuals...</p>`;
+  try{
+    const [viewedFollowing, viewedFollowers, myFollowing] = await Promise.all([ getFollowingIds(viewedUid), getFollowerIds(viewedUid), getFollowingIds(currentUidParam) ]);
+    const viewedMutualIds = viewedFollowing.filter(id=>viewedFollowers.includes(id));
+    const myFollowingSet = new Set(myFollowing);
+    const isViewerMutualWithViewed = viewedFollowing.includes(currentUidParam) && viewedFollowers.includes(currentUidParam);
+    if(!isOwn &&!isViewerMutualWithViewed){
+      listEl.innerHTML=''; lockedEl.classList.remove('hidden'); document.getElementById('lockedName').innerText = currentUserData.name||'this user'; countEl.innerText = viewedMutualIds.length; titleEl.innerText = 'Connections'; document.getElementById('lockedFollowBtn').innerText = myFollowingSet.has(viewedUid)? 'Following • Waiting' : 'Follow to unlock'; section.classList.remove('hidden'); return;
+    }
+    lockedEl.classList.add('hidden'); section.classList.remove('hidden');
+    if(viewedMutualIds.length===0){
+      listEl.innerHTML=`<div class="mt-2 p-4 bg-black/40 border border-dashed border-white/10 rounded-xl text-center"><p class="text-[11px] text-white/30">No mutuals yet.</p></div>`;
+      countEl.innerText='0'; titleEl.innerText = isOwn? 'Your Mutuals' : 'Mutuals'; return;
+    }
+    const users = await getUserDocsByIds(viewedMutualIds);
+    allMutualsCache = users;
+    countEl.innerText = users.length; titleEl.innerText = isOwn? 'Your Mutuals' : `Mutuals with ${currentUserData.name?.split(' ')[0]||'them'}`;
+    if(users.length>4) viewAllBtn.classList.remove('hidden'); else viewAllBtn.classList.add('hidden');
+    renderMutualList(users.slice(0,4));
+  }catch(e){ listEl.innerHTML=`<p class="text-[11px] text-red-400">Failed</p>`; }
+}
+function renderMutualList(usersToShow){
+  const listEl=document.getElementById('mutualList'); let html='';
+  usersToShow.forEach(u=>{
+    const name=u.name||'User'; const handle=cleanH(u.username||u.handle||'user'); const pic=u.photoURL||u.profilePic||''; const initials=name.substring(0,2).toUpperCase();
+    const tag=getSingleTag(u);
+    html+=`<div class="flex items-center justify-between p-3 bg-black/40 border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-colors"><a href="profile.html?uid=${u.id}" class="flex items-center gap-3 min-w-0 flex-1"><div class="w-9 h-9 rounded-full bg-white/10 border border-white/10 flex items-center justify-center font-black text-white text-[10px] overflow-hidden flex-shrink-0">${pic?`<img src="${pic}" class="w-full h-full object-cover">`:initials}</div><div class="min-w-0"><p class="text-[13px] font-bold text-white truncate flex items-center gap-1">${escapeHtml(name)} <span class="flex items-center">${tag}</span></p><p class="text-[11px] text-white/30 truncate">@${escapeHtml(handle)}</p></div></a><a href="profile.html?uid=${u.id}" class="ml-2 w-7 h-7 rounded-full bg-white/[0.06] border border-white/[0.06] flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.1]"><i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a></div>`;
+  });
+  listEl.innerHTML=html;
+}
+function toggleMutualView(){ isMutualExpanded=!isMutualExpanded; document.getElementById('mutualViewAll').innerText = isMutualExpanded?'Show less':'View all'; renderMutualList(isMutualExpanded?allMutualsCache:allMutualsCache.slice(0,4)); }
+async function checkIsMutual(otherUid){ if(!otherUid||otherUid===currentUid) return false; const [iFollow,theyFollow]=await Promise.all([db.collection('follows').where('followerId','==',currentUid).where('followingId','==',otherUid).limit(1).get(), db.collection('follows').where('followerId','==',otherUid).where('followingId','==',currentUid).limit(1).get()]); return!iFollow.empty &&!theyFollow.empty; }
+async function toggleFollowProfile(){ if(!profileUid||profileUid===currentUid) return; const q=await db.collection('follows').where('followerId','==',currentUid).where('followingId','==',profileUid).limit(1).get(); if(q.empty){ await db.collection('follows').add({followerId:currentUid,followingId:profileUid,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); followingCache.add(profileUid); } else { q.forEach(d=>d.ref.delete()); followingCache.delete(profileUid); } await updateFollowButtonState(); loadMutualConnections(profileUid, currentUid); }
+async function handleMessageClick(){ if(!profileUid) return; document.getElementById('mutualName').innerText=currentUserData.name||'this user'; const isMutual=await checkIsMutual(profileUid); if(isMutual){ const chatId=[currentUid,profileUid].sort().join('_'); await db.collection('chats').doc(chatId).set({participants:[currentUid,profileUid],updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); window.location.href=`messages.html?chat=${profileUid}`; } else { const m=document.getElementById('mutualModal'); m.classList.remove('hidden'); m.classList.add('flex'); } }
+function switchTab(tab){ activeTab=tab; document.querySelectorAll('.tab-btn').forEach(b=>{ b.classList.remove('border-white','text-white','bg-white/[0.06]'); b.classList.add('border-transparent','text-white/30'); }); document.getElementById('tab-'+tab).classList.add('border-white','text-white','bg-white/[0.06]'); document.getElementById('tab-'+tab).classList.remove('border-transparent','text-white/30'); document.getElementById('tabContent').innerHTML=`<p class="p-8 text-center text-white/20 text-xs animate-pulse">Loading ${tab}...</p>`; if(tab==='posts') loadPosts(); if(tab==='replies') loadReplies(); if(tab==='highlights') loadHighlights(); if(tab==='likes') loadLikes(); }
+function renderPostCard(id,p){ const time=formatTime(p.createdAt); return `<div class="flex gap-3 border-b border-white/[0.06] p-4 hover:bg-white/[0.02]"><div class="w-10 h-10 rounded-full bg-white/10 border border-white/10 flex items-center justify-center font-bold text-white text-xs overflow-hidden">${currentUserData.photoURL?`<img src="${currentUserData.photoURL}" class="w-full h-full object-cover">`: (currentUserData.name||'U').substring(0,2).toUpperCase()}</div><div class="flex-grow min-w-0"><div class="flex items-center gap-1"><span class="font-bold text-[13px] text-white">${escapeHtml(currentUserData.name||'User')}</span><span class="flex items-center">${getSingleTag(currentUserData)}</span><span class="text-white/30 text-[11px] ml-1">· ${time}</span></div><p class="text-[13px] text-white/80 mt-1 whitespace-pre-wrap break-words">${escapeHtml(p.text||p.content||'')}</p>${p.imageUrl||p.image?`<img src="${p.imageUrl||p.image}" class="mt-3 rounded-2xl border border-white/10 max-h-[400px] w-full object-cover">`:''}</div></div>`; }
+function loadPosts(){ const feed=document.getElementById('tabContent'); db.collection('posts').orderBy('createdAt','desc').limit(100).onSnapshot(snap=>{ let html=''; let found=false; snap.forEach(doc=>{ const p=doc.data(); if((p.userId||p.authorId)!==profileUid) return; found=true; html+=renderPostCard(doc.id,p); }); feed.innerHTML=found?html:`<div class="p-12 text-center"><p class="text-white/40 text-[13px]">No posts yet</p></div>`; }); }
+async function loadReplies(){ const feed=document.getElementById('tabContent'); try{ const snap=await db.collectionGroup('comments').where('authorId','==',profileUid).orderBy('createdAt','desc').limit(50).get(); if(snap.empty){ feed.innerHTML=`<div class="p-12 text-center"><p class="text-white/40 text-[13px]">No replies yet</p></div>`; return; } let html=''; for(const doc of snap.docs){ const c=doc.data(); html+=`<div class="border-b border-white/[0.06] p-4"><p class="text-[13px] text-white/70 whitespace-pre-wrap">${escapeHtml(c.text)}</p></div>`; } feed.innerHTML=html; }catch(e){ feed.innerHTML=`<div class="p-8 text-center text-[11px] text-white/20">No replies</div>`; }}
+function loadHighlights(){ const feed=document.getElementById('tabContent'); db.collection('posts').orderBy('createdAt','desc').limit(100).onSnapshot(async snap=>{ let html=''; let found=false; for(const doc of snap.docs){ const p=doc.data(); if((p.userId||p.authorId)!==profileUid) continue; const likes=await db.collection('posts').doc(doc.id).collection('likes').get(); if(likes.size>=1){ found=true; html+=renderPostCard(doc.id,p); } } feed.innerHTML=found?html:`<div class="p-12 text-center"><p class="text-white/40 text-[13px]">No highlights yet</p></div>`; });}
+async function loadLikes(){ const feed=document.getElementById('tabContent'); try{ const likeSnap=await db.collectionGroup('likes').where('userId','==',profileUid).limit(50).get(); if(likeSnap.empty){ feed.innerHTML=`<div class="p-12 text-center"><p class="text-white/40 text-[13px]">No likes yet</p></div>`; return; } let html=''; for(const doc of likeSnap.docs){ const postId=doc.ref.parent.parent.id; try{ const postDoc=await db.collection('posts').doc(postId).get(); if(postDoc.exists) html+=renderPostCard(postId,postDoc.data()); }catch(e){} } feed.innerHTML=html; }catch(e){ feed.innerHTML=`<div class="p-8 text-center text-[11px] text-white/20">No likes</div>`; }}
+
+// EDIT MODAL - NAME LOCKED FOR SECURITY
+function openEditModal(){
+ if(!isOwnProfile) return;
+ document.getElementById('editModal').classList.remove('hidden'); document.getElementById('editModal').classList.add('flex');
+ document.getElementById('editName').value=currentUserData.name||'';
+ document.getElementById('editNameLocked').innerText=currentUserData.name||'';
+ document.getElementById('editBio').value=currentUserData.bio||'';
+ const pic=currentUserData.photoURL||currentUserData.profilePic||'';
+ document.getElementById('editAvatarPreview').innerHTML=pic?`<img src="${pic}" class="w-full h-full object-cover">`:`${(currentUserData.name||'U').substring(0,2).toUpperCase()}`;
+ selectedProfilePicBase64=pic;
+}
+function closeEditModal(){ document.getElementById('editModal').classList.add('hidden'); document.getElementById('editModal').classList.remove('flex'); }
+function handleProfilePicSelect(e){ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=ev=>{ const img=new Image(); img.onload=()=>{ const c=document.createElement('canvas'); let w=img.width,h=img.height; const MAX=400; if(w>MAX||h>MAX){ if(w>h){ h*=MAX/w; w=MAX; } else { w*=MAX/h; h=MAX; } } c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); selectedProfilePicBase64=c.toDataURL('image/jpeg',0.8); document.getElementById('editAvatarPreview').innerHTML=`<img src="${selectedProfilePicBase64}" class="w-full h-full object-cover">`; }; img.src=ev.target.result; }; r.readAsDataURL(f); }
+async function saveProfile(){
+ let bio=document.getElementById('editBio').value.trim();
+ const btn=document.getElementById('saveBtn'); btn.innerText='Saving...'; btn.disabled=true;
+ try{
+   // SECURITY: NAME IS NOT UPDATED - ONLY BIO & PIC
+   await db.collection('users').doc(currentUid).update({bio:bio, photoURL:selectedProfilePicBase64||currentUserData.photoURL||'', profilePic:selectedProfilePicBase64||currentUserData.profilePic||''});
+   closeEditModal();
+ }catch(e){ alert('Failed: '+e.message); }
+ btn.innerText='Save'; btn.disabled=false;
+}
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+body{background:#050507;color:#e7e9ea;font-family:'Inter',sans-serif}
+.featured-name { background: linear-gradient(90deg, #c084fc, #60a5fa, #f472b6, #c084fc); background-size:300% 300%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: gradientShift 4s ease infinite; filter: drop-shadow(0 0 10px rgba(168,85,247,0.8)); font-weight:900!important;}
+@keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.founder-glow-avatar{ border-color:#fbbf24!important; box-shadow:0 0 20px rgba(251,191,36,0.6)!important; }
+.tab-btn{border-bottom-width:2px; transition:all 0.15s}
+</style>
+</head>
+<body>
+<div id="banCheckLoader" class="fixed inset-0 z-[9999] bg-[#050507] flex items-center justify-center"><div class="w-10 h-10 border-2 border-white/10 border-t-white rounded-full animate-spin"></div></div>
+
+<div id="mainApp" class="max-w-[720px] mx-auto w-full min-h-screen bg-[#08080a] border-x border-white/[0.06] hidden flex-col">
+
+<!-- TOP BAR - BACK TO HOME -->
+<div class="sticky top-0 z-20 bg-[#08080a]/90 backdrop-blur-2xl border-b border-white/[0.06] flex items-center gap-4 px-4 py-3">
+  <a href="homepage.html" class="w-9 h-9 rounded-full bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.1] flex items-center justify-center text-white/70 hover:text-white transition-all"><i class="fa-solid fa-arrow-left text-[14px]"></i></a>
+  <div><h1 id="profileNameTop" class="font-black text-[15px] text-white leading-none">Profile</h1><p class="text-[10px] text-white/40 font-bold tracking-widest mt-1">UMBRELLAsocial • VAULT</p></div>
+  <div class="ml-auto"><a href="homepage.html" class="px-3 py-1.5 rounded-full bg-white text-black font-black text-[11px] hover:bg-white/90"><i class="fa-solid fa-house mr-1 text-[10px]"></i> Home</a></div>
+</div>
+
+<div class="relative">
+<div id="profileBanner" class="h-[190px] w-full"></div>
+</div>
+
+<div class="px-5 pb-5 relative">
+<div class="flex justify-between items-start">
+<div id="profileAvatar" class="w-[76px] h-[76px] rounded-full bg-white/10 border-[3px] border-[#08080a] -mt-9 flex items-center justify-center font-black text-white text-xl overflow-hidden relative z-10">U</div>
+<div id="ownProfileActions" class="mt-3 hidden"><button onclick="openEditModal()" class="border border-white/15 hover:bg-white/[0.06] text-white font-bold px-5 py-2 rounded-full text-[12px] transition-all">Edit profile</button></div>
+<div id="otherProfileActions" class="hidden mt-3 flex gap-2">
+  <button id="followBtn" onclick="toggleFollowProfile()" class="bg-white text-black font-bold px-5 py-2 rounded-full text-[12px]">Follow</button>
+  <button onclick="handleMessageClick()" class="border border-white/10 bg-white/[0.04] text-white font-bold px-4 py-2 rounded-full text-[12px] flex items-center gap-1.5 hover:bg-white/[0.08]"><i class="fa-solid fa-lock text-[10px] text-white/30"></i> Message</button>
+</div>
+</div>
+<h2 id="profileName" class="font-black text-[18px] mt-4 flex items-center gap-2 flex-wrap leading-tight">Loading...</h2>
+<p id="profileHandle" class="text-white/35 text-[13px] mt-1">@loading</p>
+<p id="profileBio" class="text-[13px] mt-3 whitespace-pre-wrap text-white/70 leading-[18px]">Loading...</p>
+<div id="followStatusMsg" style="display:none" class="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-400"></div>
+
+<div id="mutualSection" class="hidden mt-6 p-4 bg-white/[0.03] border border-white/[0.06] rounded-[20px] backdrop-blur-xl">
+  <div class="flex items-center justify-between">
+    <h3 class="text-[11px] font-black text-white tracking-widest flex items-center gap-2">
+      <i class="fa-solid fa-user-group text-white/40 text-[11px]"></i>
+      <span id="mutualTitle">Mutuals</span>
+      <span id="mutualCount" class="text-[10px] bg-white text-black px-2 py-0.5 rounded-full font-black">0</span>
+    </h3>
+    <button id="mutualViewAll" onclick="toggleMutualView()" class="hidden text-[11px] text-white/50 hover:text-white font-bold">View all</button>
+  </div>
+  <div id="mutualLocked" class="hidden mt-3 p-5 bg-black/40 border border-white/[0.06] rounded-xl text-center">
+    <div class="w-10 h-10 bg-white/[0.04] border border-white/[0.06] rounded-full flex items-center justify-center mx-auto mb-2"><i class="fa-solid fa-lock text-white/20 text-sm"></i></div>
+    <p class="text-[12px] font-bold text-white">Connections are private</p>
+    <p class="text-[11px] text-white/30 mt-1">Only mutuals can see <span id="lockedName">this user's</span> connections.</p>
+    <button id="lockedFollowBtn" onclick="toggleFollowProfile()" class="mt-3 bg-white text-black text-[11px] font-black px-5 py-2 rounded-full">Follow to unlock</button>
+  </div>
+  <div id="mutualList" class="mt-3 grid grid-cols-1 gap-2"></div>
+</div>
+</div>
+
+<div class="border-y border-white/[0.06] flex bg-[#08080a]/50 backdrop-blur-xl sticky top-[57px] z-10">
+<button id="tab-posts" onclick="switchTab('posts')" class="tab-btn flex-1 py-3.5 font-black text-[11px] tracking-widest border-white text-white bg-white/[0.06]">POSTS</button>
+<button id="tab-replies" onclick="switchTab('replies')" class="tab-btn flex-1 py-3.5 font-black text-[11px] tracking-widest border-transparent text-white/30">REPLIES</button>
+<button id="tab-highlights" onclick="switchTab('highlights')" class="tab-btn flex-1 py-3.5 font-black text-[11px] tracking-widest border-transparent text-white/30">HIGHLIGHTS</button>
+<button id="tab-likes" onclick="switchTab('likes')" class="tab-btn flex-1 py-3.5 font-black text-[11px] tracking-widest border-transparent text-white/30">LIKES</button>
+</div>
+<div id="tabContent" class="min-h-[200px] pb-10"></div>
+
+</div>
+
+<!-- MUTUAL MODAL -->
+<div id="mutualModal" class="hidden fixed inset-0 z-[60] bg-black/80 backdrop-blur-md items-center justify-center p-4">
+  <div class="bg-[#111113] border border-white/[0.08] rounded-[24px] w-full max-w-[360px] p-6 text-center">
+    <div class="w-14 h-14 bg-white/[0.06] border border-white/[0.08] rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-lock text-white/40 text-xl"></i></div>
+    <h3 class="font-black text-white text-[15px]">Mutual required</h3>
+    <p class="text-[12px] text-white/40 mt-2 leading-5">You can only message mutuals.<br>Follow <span id="mutualName" class="text-white font-bold">this user</span> and get follow back ☂️</p>
+    <div class="mt-5 flex gap-2">
+      <button onclick="document.getElementById('mutualModal').classList.add('hidden');document.getElementById('mutualModal').classList.remove('flex')" class="flex-1 bg-white text-black font-black py-2.5 rounded-full text-[12px]">Okay</button>
+      <button onclick="location.href='explore.html'" class="flex-1 border border-white/10 text-white font-bold py-2.5 rounded-full text-[12px]">Explore</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL - NAME LOCKED -->
+<div id="editModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md items-center justify-center p-4">
+<div class="bg-[#111113] w-full max-w-[480px] rounded-[24px] border border-white/[0.08] overflow-hidden">
+<div class="flex items-center justify-between p-4 border-b border-white/[0.06]"><div class="flex items-center gap-4"><button onclick="closeEditModal()" class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.1] flex items-center justify-center"><i class="fa-solid fa-xmark text-[12px]"></i></button><h2 class="font-black text-[14px] tracking-wide">Edit profile</h2></div><button id="saveBtn" onclick="saveProfile()" class="bg-white text-black font-black px-5 py-2 rounded-full text-[12px] hover:bg-white/90">Save</button></div>
+<div class="p-6 space-y-5">
+  <div class="flex flex-col items-center gap-3">
+    <div class="relative group"><div id="editAvatarPreview" class="w-24 h-24 rounded-full bg-white/10 border-2 border-white/10 flex items-center justify-center font-black text-white text-xl overflow-hidden">AS</div><label class="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"><i class="fa-solid fa-camera text-white"></i><input type="file" accept="image/*" class="hidden" onchange="handleProfilePicSelect(event)"></label></div>
+    <p class="text-[10px] text-white/30 font-bold tracking-widest">TAP TO CHANGE PHOTO</p>
+  </div>
+
+  <!-- NAME LOCKED SECTION -->
+  <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+    <div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-lock text-amber-400 text-[11px]"></i><span class="text-[10px] font-black tracking-widest text-amber-400">NAME LOCKED • SECURITY</span></div>
+    <div class="flex items-center gap-3">
+      <div class="flex-1 bg-black/50 border border-white/[0.06] rounded-xl px-3 py-2.5 flex items-center justify-between opacity-60">
+        <span id="editNameLocked" class="text-[13px] text-white font-bold">Loading...</span>
+        <i class="fa-solid fa-lock text-white/20 text-[11px]"></i>
+      </div>
+    </div>
+    <p class="text-[10px] text-amber-300/60 mt-2 leading-[13px]">For security reasons, you cannot change your name. Contact support / founder if you need to change it. This prevents impersonation.</p>
+  </div>
+  <!-- Hidden input keeps old logic but disabled -->
+  <input id="editName" type="hidden">
+
+  <div>
+    <label class="text-[10px] font-black tracking-widest text-white/40">BIO</label>
+    <textarea id="editBio" rows="4" placeholder="Your bio..." class="w-full mt-2 bg-black/50 border border-white/[0.08] rounded-xl px-3 py-3 text-[13px] text-white outline-none focus:border-white/20 resize-none placeholder-white/20"></textarea>
+    <p class="text-[10px] text-white/20 mt-2">Bio can be changed anytime • Name cannot</p>
+  </div>
+</div>
+</div>
+</div>
+
+</body>
+</html>

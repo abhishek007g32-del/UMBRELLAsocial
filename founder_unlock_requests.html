@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unlock Requests - Founder</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyC4DGER69Xfc3P_xcQR5RtXH3oBuLP9rKY",authDomain:"umbrellasocial.firebaseapp.com",projectId:"umbrellasocial",storageBucket:"umbrellasocial.firebasestorage.app",messagingSenderId:"126237795119",appId:"1:126237795119:web:db54ac49f178e0136bf7da"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore(); const auth=firebase.auth();
+</script>
+<style>body{background:#050507;color:white;font-family:Inter,sans-serif}</style>
+</head>
+<body class="p-6">
+<div class="max-w-[1300px] mx-auto">
+  <div class="flex items-center justify-between">
+    <h1 class="text-[22px] font-black"><i class="fa-solid fa-shield-halved text-amber-400 mr-2"></i> Unlock Requests - Founder Action Panel</h1>
+    <a href="founder_erp.html" class="px-4 py-2 rounded-full bg-white text-black text-[12px] font-bold">Back to ERP</a>
+  </div>
+  <div id="list" class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-5"></div>
+</div>
+<script>
+auth.onAuthStateChanged(async u=>{
+  if(!u){ location.href='auth.html'; return; }
+  const me=await db.collection('users').doc(u.uid).get();
+  if(!me.exists ||!me.data().isFounder){ alert('Only Founder allowed'); location.href='homepage.html'; return; }
+  load();
+});
+function load(){
+  db.collection('securityVerifications').orderBy('createdAt','desc').onSnapshot(snap=>{
+    const el=document.getElementById('list');
+    if(snap.empty){ el.innerHTML='<div class="col-span-2 p-20 text-center rounded-[24px] bg-[#0e0e10] border border-white/10 text-zinc-500">No unlock requests yet. When someone fails 3 logins, they will appear here with Aadhar + Face video.</div>'; return; }
+    let html='';
+    snap.forEach(doc=>{
+      const d=doc.data();
+      const time=d.createdAt?.toDate?d.createdAt.toDate().toLocaleString():'Now';
+      const pending=d.status==='pending_founder_approval';
+      html+=`
+      <div class="rounded-[24px] bg-[#0e0e10] border ${pending?'border-amber-500/30':'border-white/10'} p-5">
+        <div class="flex justify-between"><div><p class="font-black">${d.email}</p><p class="text-[11px] text-zinc-400 font-mono mt-1">Aadhar: ${d.aadharFull||''} | Last4: ${d.aadharLast4||''}</p><p class="text-[10px] text-zinc-600 mt-1">${time}</p><span class="inline-flex mt-2 px-3 py-1 rounded-full text-[9px] font-black ${pending?'bg-amber-500/15 text-amber-300 border border-amber-500/20':'bg-white/10 text-zinc-400'}">${d.status}</span></div><button onclick="del('${doc.id}')" class="w-8 h-8 rounded-full bg-white/5 border border-white/10"><i class="fa-solid fa-trash text-[10px]"></i></button></div>
+        <div class="grid grid-cols-2 gap-3 mt-4"><div class="bg-black border border-white/10 rounded-2xl overflow-hidden"><p class="text-[10px] p-2 bg-white/5 font-bold">AADHAR</p>${d.aadharImage?`<img src="${d.aadharImage}" class="w-full h-[200px] object-contain">`:''}</div><div class="bg-black border border-white/10 rounded-2xl overflow-hidden"><p class="text-[10px] p-2 bg-white/5 font-bold">FACE VIDEO</p>${d.faceVideo?`<video src="${d.faceVideo}" controls class="w-full h-[200px] bg-black"></video>`:''}</div></div>
+        ${pending?`<div class="flex gap-2 mt-5"><button onclick="approve('${d.email}','${doc.id}')" class="flex-1 bg-white text-black font-black py-3.5 rounded-full text-[12px]">✓ Approve & Unlock</button><button onclick="reject('${doc.id}','${d.email}')" class="flex-1 bg-red-500/10 border border-red-500/20 text-red-300 font-black py-3.5 rounded-full text-[12px]">✗ Reject</button></div>`:`<p class="text-[11px] text-center text-zinc-500 mt-4">Already ${d.status}</p>`}
+      </div>`;
+    });
+    el.innerHTML=html;
+  });
+}
+async function approve(email,id){
+  if(!confirm('Approve '+email+'?')) return;
+  const q=await db.collection('users').where('email','==',email.toLowerCase()).limit(1).get();
+  if(!q.empty) await q.docs[0].ref.update({isSecurityLocked:false, securityApproved:true});
+  await db.collection('securityVerifications').doc(id).update({status:'approved_by_founder', approvedAt: firebase.firestore.FieldValue.serverTimestamp()});
+  alert('Approved!');
+}
+async function reject(id,email){
+  if(!confirm('Reject '+email+'? Keep locked.')) return;
+  await db.collection('securityVerifications').doc(id).update({status:'rejected_by_founder'});
+  const q=await db.collection('users').where('email','==',email.toLowerCase()).limit(1).get();
+  if(!q.empty) await q.docs[0].ref.update({isSecurityLocked:true, securityApproved:false});
+}
+async function del(id){ if(confirm('Delete?')) await db.collection('securityVerifications').doc(id).delete(); }
+</script>
+</body>
+</html>

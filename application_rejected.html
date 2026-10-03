@@ -1,0 +1,134 @@
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Application Rejected - UMBRELLAsocial</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyC4DGER69Xfc3P_xcQR5RtXH3oBuLP9rKY",authDomain:"umbrellasocial.firebaseapp.com",projectId:"umbrellasocial",storageBucket:"umbrellasocial.firebasestorage.app",messagingSenderId:"126237795119",appId:"1:126237795119:web:db54ac49f178e0136bf7da"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+firebase.auth().signInAnonymously().catch(()=>{}).finally(()=>loadRejected());
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+body{font-family:Inter,sans-serif;background:#000}
+</style>
+</head>
+<body class="min-h-screen bg-black text-zinc-200 flex items-center justify-center p-6">
+<div class="w-full max-w-[480px] text-center">
+  <div class="w-28 h-28 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-400 text-[40px] shadow-[0_0_60px_rgba(239,68,68,0.25)]"><i class="fa-solid fa-ban"></i></div>
+  <h1 class="text-[36px] font-black mt-6 leading-[0.9] text-red-400">Application<br>Rejected</h1>
+  <p class="text-[13px] text-zinc-500 mt-4 leading-relaxed">Founder reviewed your Aadhar and video. Your application was rejected. 30 days cooldown started.</p>
+
+  <div class="mt-8 p-5 rounded-[24px] bg-[#0e0e10] border border-[#1e1e1e] text-left space-y-3">
+    <p class="text-[11px] text-zinc-400 flex justify-between"><span>Email</span><span id="rEmail" class="text-white font-bold">-</span></p>
+    <p class="text-[11px] text-zinc-400 flex justify-between"><span>Status</span><span class="text-red-400 font-black">REJECTED BY FOUNDER</span></p>
+    <p class="text-[11px] text-zinc-400 flex justify-between"><span>Rejected On</span><span id="rDate" class="text-white">-</span></p>
+    <p class="text-[11px] text-zinc-400 flex justify-between"><span>Reapply After</span><span id="rReapply" class="text-white font-bold">-</span></p>
+  </div>
+
+  <div class="mt-4 p-4 rounded-[20px] bg-red-500/5 border border-red-500/10 text-left">
+    <p class="text-[10px] font-black tracking-widest text-red-400"><i class="fa-solid fa-circle-info mr-1"></i> REJECTION REASON</p>
+    <p id="rReason" class="text-[12px] text-zinc-300 mt-2 leading-relaxed">Loading...</p>
+  </div>
+
+  <div class="mt-6 p-6 rounded-[24px] bg-[#0e0e10] border border-red-500/20">
+    <p class="text-[10px] tracking-[0.2em] text-zinc-500 font-black">COOLDOWN TIMER • 30 DAYS</p>
+    <p id="cooldownTimer" class="text-[44px] font-black text-white mt-2 leading-none">--</p>
+    <p id="cooldownSub" class="text-[11px] text-zinc-500 mt-2">Calculating...</p>
+    <div class="mt-5 h-2.5 bg-[#1a1a1a] rounded-full overflow-hidden"><div id="cooldownBar" class="h-full bg-gradient-to-r from-red-500 to-red-600 transition-all duration-1000" style="width:0%"></div></div>
+    <p id="cooldownDate" class="text-[10px] text-zinc-600 mt-3">-</p>
+  </div>
+
+  <div class="mt-6 p-4 rounded-[20px] bg-amber-500/5 border border-amber-500/10 text-left flex gap-3">
+    <div class="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0"><i class="fa-solid fa-triangle-exclamation text-[12px]"></i></div>
+    <div><p class="text-[11px] font-bold text-amber-300">What now?</p><p class="text-[11px] text-zinc-400 mt-1 leading-relaxed">You cannot submit new verification until cooldown ends. After cooldown, login again and you will be redirected to <b class="text-white">security_check.html</b> to re-apply.</p></div>
+  </div>
+  <p class="text-[10px] text-zinc-600 mt-8 tracking-widest">UMBRELLAsocial • Founder Decision is Final</p>
+</div>
+
+<script>
+const email=(new URLSearchParams(location.search).get('email')||'').toLowerCase();
+document.getElementById('rEmail').innerText=email||'No email';
+
+async function loadRejected(){
+  if(!email){ document.getElementById('rReason').innerText='No email in URL'; return; }
+  try{
+    const snap=await db.collection('securityVerifications').where('email','==',email).get();
+    if(snap.empty){
+      document.getElementById('rReason').innerText='No records found for '+email;
+      document.getElementById('cooldownTimer').innerText='No Record';
+      return;
+    }
+    let docs=[]; snap.forEach(d=>{ docs.push({id:d.id,...d.data()}); });
+    docs.sort((a,b)=>{
+      const tA=a.rejectedAt?.toMillis?.() || a.createdAt?.toMillis?.() || 0;
+      const tB=b.rejectedAt?.toMillis?.() || b.createdAt?.toMillis?.() || 0;
+      return tB - tA;
+    });
+    let data=docs.find(d=>d.status==='rejected_by_founder') || docs[0];
+    if(data.status!=='rejected_by_founder'){
+      window.location.replace('application_status.html?email='+encodeURIComponent(email));
+      return;
+    }
+    let rejectedAt=null;
+    if(data.rejectedAt?.toDate) rejectedAt=data.rejectedAt.toDate();
+    else if(data.rejectedAt?.seconds) rejectedAt=new Date(data.rejectedAt.seconds*1000);
+    else if(data.createdAt?.toDate) rejectedAt=data.createdAt.toDate();
+    else rejectedAt=new Date();
+
+    const nextDate=new Date(rejectedAt.getTime()+30*24*60*60*1000);
+    document.getElementById('rDate').innerText=rejectedAt.toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
+    document.getElementById('rReapply').innerText=nextDate.toLocaleDateString('en-IN', {dateStyle:'long'});
+    document.getElementById('cooldownDate').innerText=`Rejected: ${rejectedAt.toLocaleDateString()} • Reapply: ${nextDate.toLocaleDateString()}`;
+    document.getElementById('rReason').innerText=data.rejectReason || data.reason || 'Rejected by Founder';
+
+    function update(){
+      const remainingMs=nextDate - new Date();
+      if(remainingMs<=0){
+        document.getElementById('cooldownTimer').innerText='0 Days - Over';
+        document.getElementById('cooldownSub').innerText='Cooldown over - Redirecting...';
+        document.getElementById('cooldownBar').style.width='100%';
+        setTimeout(()=>{ window.location.href='security_check.html?email='+encodeURIComponent(email); },2000);
+        return;
+      }
+      const days=Math.floor(remainingMs/(24*60*60*1000));
+      const hours=Math.floor((remainingMs%(24*60*60*1000))/(60*60*1000));
+      const mins=Math.floor((remainingMs%(60*60*1000))/(60*1000));
+      const secs=Math.floor((remainingMs% (60*1000))/1000);
+      document.getElementById('cooldownTimer').innerText=`${days}D : ${hours}H : ${mins}M`;
+      document.getElementById('cooldownSub').innerText=`${secs}s remaining • Live`;
+      document.getElementById('cooldownBar').style.width=(remainingMs/(30*24*60*60*1000)*100)+'%';
+    }
+    update(); setInterval(update,1000);
+  }catch(e){
+    document.getElementById('rReason').innerText='Error: '+e.message;
+  }
+}
+history.pushState(null,'',location.href);
+window.addEventListener('popstate',()=>{ history.pushState(null,'',location.href); });
+</script>
+</body>
+</html>
+
+
+
+
+

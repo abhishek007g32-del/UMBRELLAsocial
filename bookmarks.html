@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bookmarks / UMBRELLAsocial • Secure</title>
+<script>(function(){ try{ const c=JSON.parse(localStorage.getItem('umbrella_ban_cache')||'null'); if(c&&c.banned){ const u=c.until?new Date(c.until):null; if(!u||u>new Date()){ if(!location.pathname.includes('banned.html')) location.replace('banned.html'); }} }catch(e){} })();</script>
+<style>#mainApp{display:none} #banCheckLoader{display:flex}</style>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyC4DGER69Xfc3P_xcQR5RtXH3oBuLP9rKY",authDomain:"umbrellasocial.firebaseapp.com",projectId:"umbrellasocial",storageBucket:"umbrellasocial.firebasestorage.app",messagingSenderId:"126237795119",appId:"1:126237795119:web:db54ac49f178e0136bf7da"};
+if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore(); const auth=firebase.auth();
+let currentUid=null;
+
+function cleanH(h){ if(!h) return 'user'; return h.toString().replace(/@/g,'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'')||'user'; }
+function escapeHtml(t){ return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function getSingleTag(u){
+  if(!u) return '';
+  let badges='';
+  if(u.isVerified) badges+=`<i class="fa-solid fa-circle-check text-[#1d9bf0] text-[12px] ml-1"></i>`;
+  if(u.isFeatured) badges+=`<i class="fa-solid fa-bolt text-purple-400 text-[10px] ml-0.5"></i>`;
+  if(u.isFounder) return `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-300 to-orange-500 text-black text-[7px] font-black tracking-widest"><i class="fa-solid fa-crown text-[6px]"></i> FOUNDER</span>`+badges;
+  if(u.isStaff){ const role=(u.staffRole||'SUPPORT STAFF').toUpperCase(); return `<span class="inline-flex px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[7px] font-black tracking-widest">${role}</span>`+badges; }
+  return badges;
+}
+
+function cacheBan(d){ localStorage.setItem('umbrella_ban_cache', JSON.stringify({banned:true, reason:d.banReason, until:d.banUntil? (d.banUntil.toDate? d.banUntil.toDate().toISOString(): new Date(d.banUntil).toISOString()):null})); location.replace('banned.html'); }
+
+document.addEventListener('DOMContentLoaded',()=>{
+ const logged=localStorage.getItem('umbrella_is_logged_in');
+ auth.onAuthStateChanged(u=>{
+  if(u && logged==='true'){
+   currentUid=u.uid;
+   db.collection('users').doc(u.uid).onSnapshot(snap=>{
+    if(snap.exists && snap.data().isBanned){ let still=true; const d=snap.data(); if(d.banUntil){ try{ const until=d.banUntil.toDate?d.banUntil.toDate():new Date(d.banUntil); if(until<new Date()){ still=false; db.collection('users').doc(u.uid).update({isBanned:false,banReason:'',banUntil:null}); } }catch(e){} } if(still){ cacheBan(d); return; } }
+    document.getElementById('banCheckLoader').style.display='none';
+    document.getElementById('mainApp').style.display='block';
+    loadBookmarks();
+   });
+  } else location.href='auth.html';
+ });
+});
+
+function loadBookmarks(){
+ const container=document.getElementById('bookmarksList');
+ db.collection('bookmarks').where('userId','==',currentUid).onSnapshot(async snap=>{
+  if(snap.empty){
+   container.innerHTML=`<div class="p-16 text-center"><div class="w-16 h-16 mx-auto rounded-[20px] bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-4"><i class="fa-regular fa-bookmark text-xl text-white/20"></i></div><p class="font-black text-white text-[15px]">No bookmarks yet</p><p class="text-[12px] text-white/30 mt-2 max-w-[240px] mx-auto">Tap the bookmark icon on any secure post. Only you can see them — encrypted vault.</p><a href="homepage.html" class="inline-flex mt-5 px-5 py-2.5 rounded-full bg-white text-black font-black text-[12px] hover:bg-white/90">Back to Home</a></div>`;
+   return;
+  }
+  let docs=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>{ const at=a.createdAt?.toDate?a.createdAt.toDate():new Date(a.createdAt||0); const bt=b.createdAt?.toDate?b.createdAt.toDate():new Date(b.createdAt||0); return bt-at; });
+  let html='';
+  for(const b of docs){
+   let postData=b;
+   try{ if(b.postId){ const pDoc=await db.collection('posts').doc(b.postId).get(); if(pDoc.exists) postData={...pDoc.data(), _id:b.postId, bookmarkId:b.id}; } }catch(e){}
+   const author=postData.author||postData.authorName||'User';
+   const initials=author.split(' ').filter(Boolean).map(n=>n[0]).join('').substring(0,2).toUpperCase();
+   const tag=getSingleTag(postData);
+   const nameClass=(postData.isFeatured&&postData.isVerified)||postData.isFounder?'featured-name':'';
+   const avatarGlow=postData.isFounder?'bg-gradient-to-br from-amber-300 to-orange-600 border-2 border-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.5)]': (postData.isFeatured&&postData.isVerified)?'bg-gradient-to-br from-[#c084fc] to-[#38bdf8] border-2 border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : postData.isStaff?'bg-gradient-to-br from-amber-300 to-orange-600 border border-amber-400/50' : 'bg-white/10 border border-white/10';
+   const cardGlow=postData.isFounder?'founder-glow-post': (postData.isFeatured&&postData.isVerified)?'founder-glow-post':'';
+   const uid=postData.userId||postData.authorId||'';
+
+   html+=`
+   <article class="p-5 hover:bg-white/[0.02] flex gap-3.5 border-b border-white/[0.06] ${cardGlow} ${postData.isFounder?'bg-gradient-to-r from-amber-500/[0.06] to-transparent':''}">
+     <a href="profile.html?uid=${uid}" class="w-10 h-10 rounded-full ${avatarGlow} flex items-center justify-center font-black text-white text-[11px] flex-shrink-0 overflow-hidden">${initials}</a>
+     <div class="flex-1 min-w-0">
+       <div class="flex items-center justify-between gap-2">
+         <div class="flex items-center gap-1 flex-wrap min-w-0">
+           <a href="profile.html?uid=${uid}" class="font-bold text-[14px] text-white truncate ${nameClass} hover:underline">${escapeHtml(author)}</a>
+           <span class="flex items-center flex-shrink-0">${tag}</span>
+         </div>
+         <button onclick="removeBookmark('${b.id}')" class="w-8 h-8 rounded-full bg-white/[0.06] border border-white/[0.06] hover:bg-[#1d9bf0]/10 hover:border-[#1d9bf0]/20 hover:text-[#1d9bf0] text-[#1d9bf0] flex items-center justify-center transition-all flex-shrink-0"><i class="fa-solid fa-bookmark text-[12px]"></i></button>
+       </div>
+       <p class="text-[14px] leading-[20px] text-white/85 mt-2 whitespace-pre-wrap break-words">${escapeHtml(postData.text||postData.content||'')}</p>
+       ${postData.imageUrl||postData.image?`<img src="${postData.imageUrl||postData.image}" class="rounded-2xl mt-3 max-h-[420px] w-full object-cover border border-white/10">`:''}
+       <div class="flex items-center gap-2 mt-3">
+         <span class="text-[10px] px-2 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-white/30 font-bold tracking-widest"><i class="fa-solid fa-lock mr-1 text-[8px]"></i> SAVED • ENCRYPTED</span>
+       </div>
+     </div>
+   </article>`;
+  }
+  container.innerHTML=html;
+ });
+}
+async function removeBookmark(id){ if(confirm('Remove bookmark?')) await db.collection('bookmarks').doc(id).delete(); }
+function clearAllBookmarks(){ if(confirm('Remove ALL bookmarks? This cannot be undone.')) db.collection('bookmarks').where('userId','==',currentUid).get().then(s=>s.forEach(d=>d.ref.delete())); }
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+body{background:#050507;color:#e7e9ea;font-family:'Inter',sans-serif}
+.featured-name { background: linear-gradient(90deg, #c084fc, #60a5fa, #f472b6, #c084fc); background-size:300% 300%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: gradientShift 4s ease infinite; filter: drop-shadow(0 0 10px rgba(168,85,247,0.8)); font-weight:900!important;}
+@keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.founder-glow-post{ border-left:2px solid rgba(168,85,247,0.5)!important; box-shadow: inset 4px 0 20px rgba(168,85,247,0.08)!important; }
+</style>
+</head>
+<body>
+<div id="banCheckLoader" class="fixed inset-0 z-[9999] bg-[#050507] flex items-center justify-center"><div class="w-10 h-10 border-2 border-white/10 border-t-white rounded-full animate-spin"></div></div>
+
+<div id="mainApp" class="max-w-[720px] mx-auto w-full min-h-screen bg-[#08080a] border-x border-white/[0.06]">
+
+<!-- TOP BAR -->
+<div class="sticky top-0 z-20 bg-[#08080a]/90 backdrop-blur-2xl border-b border-white/[0.06]">
+  <div class="flex items-center justify-between px-4 py-3">
+    <div class="flex items-center gap-3">
+      <a href="homepage.html" class="w-9 h-9 rounded-full bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.1] flex items-center justify-center text-white/70 hover:text-white transition-all"><i class="fa-solid fa-arrow-left text-[14px]"></i></a>
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 bg-white text-black rounded-xl flex items-center justify-center font-black"><i class="fa-solid fa-bookmark text-[13px]"></i></div>
+        <div>
+          <h1 class="font-black text-[15px] text-white leading-none">Bookmarks</h1>
+          <p class="text-[10px] text-white/40 font-bold tracking-widest mt-0.5">VAULT • ENCRYPTED</p>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="clearAllBookmarks()" class="w-9 h-9 rounded-full bg-white/[0.06] border border-white/[0.08] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400 text-white/40 flex items-center justify-center transition-all"><i class="fa-solid fa-trash-can text-[13px]"></i></button>
+      <a href="homepage.html" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white text-black font-black text-[11px] hover:bg-white/90"><i class="fa-solid fa-house text-[10px]"></i> Home</a>
+    </div>
+  </div>
+</div>
+
+<!-- INFO CARD -->
+<div class="m-3 rounded-[20px] border border-white/[0.08] p-4 bg-gradient-to-br from-white/[0.06] to-white/[0.02] backdrop-blur-xl flex items-center justify-between">
+  <div class="flex items-center gap-2.5">
+    <div class="w-8 h-8 rounded-full bg-[#1d9bf0]/15 border border-[#1d9bf0]/20 flex items-center justify-center"><i class="fa-solid fa-lock text-[#1d9bf0] text-[11px]"></i></div>
+    <div>
+      <p class="text-[12px] font-black text-white">Private Vault</p>
+      <p class="text-[10px] text-white/40">Only you can see • E2E saved</p>
+    </div>
+  </div>
+  <div class="px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[9px] font-black tracking-widest">SECURE</div>
+</div>
+
+<div id="bookmarksList" class="pb-10"><div class="p-10 text-center text-white/20 text-xs animate-pulse">Loading vault...</div></div>
+
+</div>
+</body>
+</html>

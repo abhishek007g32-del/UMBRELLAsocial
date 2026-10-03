@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Women Safety Admin | UMBRELLAsocial</title>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyC4DGER69Xfc3P_xcQR5RtXH3oBuLP9rKY",authDomain:"umbrellasocial.firebaseapp.com",projectId:"umbrellasocial",storageBucket:"umbrellasocial.firebasestorage.app",messagingSenderId:"126237795119",appId:"1:126237795119:web:db54ac49f178e0136bf7da"};
+if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore(), auth=firebase.auth();
+let currentUid=null, activeTicketId=null, chatUnsub=null, allDocs=[];
+function safeDecrypt(t){ if(!t) return ''; try{ if(t.includes(' ') ) return t; let d=atob(t); try{return decodeURIComponent(escape(d));}catch(e){return d;} }catch(e){ return t; } }
+function decrypt(t){ return safeDecrypt(t); }
+auth.onAuthStateChanged(async u=>{
+  if(!u){ location.href='auth.html'; return; }
+  currentUid=u.uid;
+  loadTickets();
+});
+function loadTickets(){
+  db.collection('supportTickets').orderBy('createdAt','desc').onSnapshot(snap=>{
+    allDocs=[]; snap.forEach(d=>allDocs.push({id:d.id,...d.data()}));
+    render(allDocs);
+  });
+}
+function render(docs){
+  document.getElementById('totalCount').innerText=docs.length;
+  document.getElementById('pendingCount').innerText=docs.filter(d=>d.status!=='resolved').length;
+  document.getElementById('womenCount').innerText=docs.filter(d=>d.isWomenHelpline).length;
+  document.getElementById('resolvedCount').innerText=docs.filter(d=>d.status==='resolved').length;
+  document.getElementById('trueCount').innerText=docs.filter(d=>d.adminVerdict==='TRUE').length;
+  document.getElementById('falseCount').innerText=docs.filter(d=>d.adminVerdict==='FALSE').length;
+  const c=document.getElementById('ticketsList');
+  if(docs.length===0){ c.innerHTML=`<div class="text-center mt-20"><div class="w-16 h-16 mx-auto bg-gradient-to-br from-pink-500 to-fuchsia-600 rounded-full flex items-center justify-center"><i class="fa-solid fa-shield-heart text-xl text-white"></i></div><p class="text-[#555] mt-4">No reports</p></div>`; return; }
+  let html='';
+  docs.forEach(t=>{
+    const pov=safeDecrypt(t.pov);
+    const isResolved=t.status==='resolved'||t.adminVerdict;
+    const verdict=t.adminVerdict||'';
+    let statusColor = t.status==='resolved'? 'border-pink-500/20 text-pink-300 bg-pink-500/10' : t.status==='approved'? 'border-emerald-500/20 text-emerald-300 bg-emerald-500/10' : 'border-amber-500/20 text-amber-300 bg-amber-500/10';
+    let verdictBadge='';
+    if(verdict==='TRUE'){
+      verdictBadge=`<div class="mt-3 p-3 rounded-2xl bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/30 flex gap-2"><i class="fa-solid fa-ban text-red-400 mt-0.5"></i><div><p class="text-[11px] font-black text-red-200 uppercase">Guilty Verdict - Permanent Ban</p><p class="text-[11px] text-red-300/80 mt-1">${t.trueReportReason||'Found guilty - Women Safety violation'}</p><p class="text-[9px] text-red-400/60 mt-1">Reported User ID: ${t.reportedUid} • BANNED FOREVER</p></div></div>`;
+    } else if(verdict==='FALSE'){
+      verdictBadge=`<div class="mt-3 p-3 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex gap-2"><i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5"></i><div><p class="text-[11px] font-black text-amber-200 uppercase">False Report - Female Banned</p><p class="text-[11px] text-amber-300/80 mt-1">${t.falseReportReason||'False report / No POV on time'}</p><p class="text-[9px] text-amber-400/60 mt-1">Reporter ID: ${t.userId} • BANNED PERMANENTLY • Victim Unbanned</p></div></div>`;
+    }
+    html+=`<div class="p-5 rounded-[24px] border backdrop-blur-xl ${t.isWomenHelpline?'bg-gradient-to-br from-[#1a0a14] to-[#0f0510] border-pink-500/20 shadow-[0_0_30px_rgba(236,72,153,0.08)]':'bg-[#0f0f0f] border-[#1e1e1e]'} mb-4 transition hover:border-pink-500/30">
+      <div class="flex justify-between items-start gap-3">
+        <div class="flex gap-3"><div class="w-11 h-11 rounded-full bg-gradient-to-br from-pink-500 to-fuchsia-600 flex items-center justify-center text-[12px] font-black text-white">${(t.userName||'U')[0].toUpperCase()}${(t.userName||'')[1]?.toUpperCase()||''}</div>
+        <div><p class="text-[14px] font-black text-white">${t.userName||'Unknown'} <span class="text-[#666] text-[11px] font-normal">@${t.userHandle||'user'}</span> ${t.isWomenHelpline?'<span class="ml-2 text-[8px] px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white font-black tracking-widest">WOMEN HELPLINE</span>':''}</p>
+        <p class="text-[10px] text-[#777] mt-1">Category: <span class="text-[#aaa]">${t.category}</span> • Reported: <span class="text-pink-300">${t.reportedId||'-'}</span><br>UID: <span class="text-[#555]">${t.reportedUid||'resolving...'}</span> • ${t.createdAt?.toDate?.()?.toLocaleString?.()||''}</p></div></div>
+        <div class="flex flex-col items-end gap-1"><span class="text-[9px] px-3 py-1 rounded-full border font-black tracking-widest ${statusColor}">${(t.status||'pending').toUpperCase()} ${verdict? '• '+verdict:''}</span><span class="text-[9px] text-[#444]">${t.status==='resolved'?'🔒 Case Closed':'🟢 Active Case'}</span></div>
+      </div>
+      <div class="mt-4 p-4 bg-black/60 rounded-2xl border border-[#1a1a1a]">
+        <p class="text-[9px] text-pink-300/60 font-black tracking-[0.2em]">COMPLAINT DESCRIPTION</p>
+        <p class="text-[13.5px] text-[#ddd] mt-2 leading-[19px] break-words">${decrypt(t.description)}</p>
+        ${t.proofImage? `<img src="${t.proofImage}" class="mt-3 rounded-2xl max-h-52 border border-pink-500/20 cursor-pointer hover:opacity-80 transition" onclick="window.open('${t.proofImage}')">`:''}
+      </div>
+      ${(t.povSubmitted||t.pov)? `<div class="mt-3 p-4 bg-gradient-to-br from-pink-500/10 to-fuchsia-500/10 border border-pink-500/20 rounded-2xl">
+        <p class="text-[9px] text-pink-300 font-black tracking-widest">♀️ FEMALE POV SUBMITTED ✅</p>
+        <p class="text-[13px] text-white mt-2 leading-[18px]">${pov}</p>
+        ${t.povProofImage? `<img src="${t.povProofImage}" class="mt-3 rounded-2xl max-h-64 border border-pink-500/30 cursor-pointer" onclick="window.open('${t.povProofImage}')"><p class="text-[9px] text-pink-300 mt-2">POV Proof Attached</p>` : ''}
+      </div>` : `${t.isWomenHelpline? '<div class="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-2"><i class="fa-solid fa-hourglass-half text-amber-400 text-xs mt-0.5"></i><p class="text-[11px] text-amber-300">POV pending - 24h timer running</p></div>' : ''}`}
+      ${verdictBadge}
+      <div class="flex flex-wrap gap-2 mt-4">
+        <button onclick="openChat('${t.id}')" class="px-5 py-2.5 rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white font-black text-[11px] tracking-wide shadow-lg shadow-pink-500/20"><i class="fa-solid fa-lock mr-1.5"></i> ENCRYPTED CHAT ${isResolved?'(HISTORY)':''}</button>
+        ${!isResolved? `
+          ${t.isWomenHelpline? `
+            <button onclick="falseReport('${t.id}','${t.userId}','${t.reportedId}')" class="px-5 py-2.5 rounded-full bg-[#1a1a1a] border border-red-500/30 text-red-300 font-black text-[11px] hover:bg-red-500/10">FALSE → BAN FEMALE</button>
+            <button onclick="trueReport('${t.id}')" class="px-5 py-2.5 rounded-full bg-white text-black font-black text-[11px] hover:bg-pink-100 shadow">TRUE → PERMA BAN GUILTY</button>
+          `:`
+            <button onclick="approveTicket('${t.id}')" class="px-5 py-2.5 rounded-full bg-white text-black font-black text-[11px]">APPROVE</button>
+            <button onclick="resolveTicket('${t.id}')" class="px-5 py-2.5 rounded-full bg-[#1a1a1a] border border-[#222] text-[#888] font-bold text-[11px]">RESOLVE</button>
+          `}
+        `:`<div class="flex items-center gap-2 text-[10px] text-[#555]"><i class="fa-solid fa-check-circle text-pink-500"></i> Action completed - ${verdict==='TRUE'?'Reported user permanently banned':'Female banned for false report'}</div>`}
+      </div>
+    </div>`;
+  });
+  c.innerHTML=html;
+}
+function filterTickets(type){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('bg-white','text-black'));
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.add('bg-[#1a1a1a]','text-[#666]'));
+  event.target.classList.add('bg-white','text-black'); event.target.classList.remove('bg-[#1a1a1a]','text-[#666]');
+  if(type==='all') render(allDocs);
+  else if(type==='women') render(allDocs.filter(d=>d.isWomenHelpline));
+  else if(type==='pending') render(allDocs.filter(d=>d.status!=='resolved'));
+  else if(type==='resolved') render(allDocs.filter(d=>d.status==='resolved'));
+}
+async function approveTicket(id){ await db.collection('supportTickets').doc(id).update({status:'approved', updatedAt: firebase.firestore.FieldValue.serverTimestamp()}); }
+async function resolveTicket(id){ if(!confirm('Mark resolved?')) return; await db.collection('supportTickets').doc(id).update({status:'resolved', updatedAt: firebase.firestore.FieldValue.serverTimestamp()}); }
+async function falseReport(ticketId, femaleUid, reportedId){
+  const reason = prompt('FALSE REPORT CONFIRMED - Female to be PERMANENTLY BANNED:\nEnter message:','You have been permanently banned for false reporting / not submitting POV on time as per Women Safety Policy. Zero tolerance for misuse of Women Helpline.');
+  if(reason===null) return;
+  if(!confirm('FALSE? Female PERMA BAN + Victim UNBAN. Continue?')) return;
+  try{
+    const ticketSnap = await db.collection('supportTickets').doc(ticketId).get();
+    const td = ticketSnap.data();
+    let targetUid = td.reportedUid||null;
+    if(!targetUid && reportedId){
+      let clean=reportedId.replace('@','').toLowerCase().trim();
+      const q=await db.collection('users').where('username','==',clean).limit(1).get(); if(!q.empty) targetUid=q.docs[0].id;
+    }
+    if(femaleUid){
+      await db.collection('users').doc(femaleUid).update({isBanned:true, banReason:reason, banUntil:null, banType:'PERMANENT', bannedAt: firebase.firestore.FieldValue.serverTimestamp(), bannedBy:'WOMEN_HELPLINE_FALSE_VERDICT', falseReportTicketId: ticketId, status:'permanently_banned', womenSafetyStatus:'banned_false_report'});
+    }
+    if(targetUid){
+      await db.collection('users').doc(targetUid).update({isBanned:false, banReason: firebase.firestore.FieldValue.delete(), banUntil: firebase.firestore.FieldValue.delete(), bannedAt: firebase.firestore.FieldValue.delete(), bannedBy: firebase.firestore.FieldValue.delete(), womenHelplineTicketId: firebase.firestore.FieldValue.delete(), status: firebase.firestore.FieldValue.delete(), womenSafetyStatus:'cleared_false_report'});
+      await db.collection('notifications').add({userId:targetUid, type:'safety_cleared', title:'Safety Review Cleared ✅', message:'Your account restored. Report against you was false. You are now active.', isRead:false, createdAt: firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+    }
+    await db.collection('supportTickets').doc(ticketId).update({status:'resolved', adminVerdict:'FALSE', falseReportReason: reason, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), banAction: { bannedUserId: femaleUid, unbannedUserId: targetUid, type:'female_permanent_ban'}});
+    alert('✅ Female PERMA BANNED\n✅ Victim UNBANNED\nMessage: '+reason);
+  }catch(e){ alert('Failed: '+e.message); }
+}
+async function trueReport(ticketId){
+  const reason = prompt('TRUE REPORT - Guilty user to be PERMANENTLY BANNED:\nEnter message:','You have been found guilty in Women Safety investigation. Permanent ban for sexual harassment / abuse - Violated Women Safety Policy.');
+  if(reason===null) return;
+  if(!confirm('TRUE? Reported user will be PERMANENTLY BANNED (not under review). Continue?')) return;
+  try{
+    const snap=await db.collection('supportTickets').doc(ticketId).get(); const td=snap.data(); let targetUid=td.reportedUid;
+    if(!targetUid && td.reportedId){ let clean=td.reportedId.replace('@','').toLowerCase().trim(); const q=await db.collection('users').where('username','==',clean).limit(1).get(); if(!q.empty) targetUid=q.docs[0].id; }
+    if(!targetUid){ alert('UID not found'); return; }
+    await db.collection('users').doc(targetUid).update({isBanned:true, banReason: reason, banUntil:null, banType:'PERMANENT', bannedAt: firebase.firestore.FieldValue.serverTimestamp(), bannedBy:'WOMEN_HELPLINE_TRUE_VERDICT', guiltyTicketId: ticketId, status:'permanently_banned', womenSafetyStatus:'banned_guilty', underReview:false});
+    await db.collection('supportTickets').doc(ticketId).update({status:'resolved', adminVerdict:'TRUE', trueReportReason: reason, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), banAction:{ bannedUserId: targetUid, type:'guilty_permanent_ban'}});
+    await db.collection('notifications').add({userId:targetUid, type:'safety_ban', title:'Permanently Banned - Guilty', message: reason, isRead:false, createdAt: firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+    alert('🚫 Reported user PERMANENTLY BANNED: '+targetUid);
+  }catch(e){ alert('Failed: '+e.message); }
+}
+function openChat(ticketId){
+  activeTicketId=ticketId; document.getElementById('chatModal').classList.remove('hidden'); document.getElementById('chatModal').classList.add('flex');
+  document.getElementById('chatMessages').innerHTML=`<p class="text-xs text-[#555] text-center mt-10">Loading...</p>`;
+  const ref=db.collection('supportTickets').doc(ticketId).collection('messages');
+  if(chatUnsub) chatUnsub();
+  chatUnsub=ref.onSnapshot(snap=>{
+    let msgs=[]; snap.forEach(d=>msgs.push({id:d.id,...d.data()}));
+    msgs.sort((a,b)=>(a.createdAt?.toMillis?.()||0)-(b.createdAt?.toMillis?.()||0));
+    const list=document.getElementById('chatMessages'); let html='';
+    msgs.forEach(m=>{
+      const isMe=m.senderId===currentUid;
+      html+=`<div class="flex ${isMe?'justify-end':'justify-start'} mb-3"><div class="max-w-[78%] ${isMe?'bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white':'bg-[#1e1e1e] text-white border border-[#2a2a2a]'} rounded-[18px] px-4 py-2.5"><p class="text-[13.5px]">${safeDecrypt(m.text)}</p><p class="text-[9px] mt-1 opacity-60">${m.senderRole==='admin'?'Admin':'User'}</p></div></div>`;
+    });
+    list.innerHTML=html||`<p class="text-xs text-[#555] text-center mt-16">Encrypted chat</p>`; list.scrollTop=list.scrollHeight;
+    db.collection('supportTickets').doc(ticketId).get().then(doc=>{
+      const d=doc.data(); document.getElementById('chatInputArea').classList.remove('hidden'); document.getElementById('chatClosedMsg').classList.add('hidden');
+      if(d.status==='resolved'){ document.getElementById('chatClosedMsg').classList.remove('hidden'); document.getElementById('chatClosedMsg').innerHTML=`<p class="text-xs text-pink-300">🔒 Case resolved - History mode - Admin can still chat</p>`; }
+    });
+  });
+}
+function closeChat(){ document.getElementById('chatModal').classList.add('hidden'); document.getElementById('chatModal').classList.remove('flex'); if(chatUnsub) chatUnsub(); activeTicketId=null; }
+async function sendMessage(){
+  const input=document.getElementById('chatInput'); const text=input.value.trim(); if(!text||!activeTicketId) return;
+  await db.collection('supportTickets').doc(activeTicketId).collection('messages').add({senderId:currentUid,senderRole:'admin',text:btoa(unescape(encodeURIComponent(text))),createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  await db.collection('supportTickets').doc(activeTicketId).update({updatedAt:firebase.firestore.FieldValue.serverTimestamp()}); input.value='';
+}
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>body{background:#050505;color:#e7e9ea;font-family:Inter,sans-serif}.hidden{display:none!important}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#222;border-radius:10px}</style>
+</head>
+<body class="min-h-screen bg-[#050505]">
+<!-- TOP NAV WITH BACK BUTTONS -->
+<header class="sticky top-0 z-30 bg-black/80 backdrop-blur-2xl border-b border-[#151515] px-4 md:px-6 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <a href="index.html" class="w-9 h-9 rounded-full bg-[#111] border border-[#222] flex items-center justify-center hover:bg-white hover:text-black transition"><i class="fa-solid fa-house text-[12px]"></i></a>
+    <a href="admin.html" class="w-9 h-9 rounded-full bg-[#111] border border-[#222] flex items-center justify-center hover:bg-white hover:text-black transition"><i class="fa-solid fa-arrow-left text-[12px]"></i></a>
+    <div class="w-px h-6 bg-[#222] mx-1"></div>
+    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-pink-500/20"><i class="fa-solid fa-shield-heart text-white text-sm"></i></div>
+    <div><h1 class="font-black text-[13px] tracking-tight">WOMEN SAFETY <span class="bg-gradient-to-r from-pink-500 to-fuchsia-500 bg-clip-text text-transparent">ADMIN</span></h1><p class="text-[9px] text-[#666] tracking-[0.2em]">UMBRELLAsocial • SECURE PANEL</p></div>
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="home.html" class="hidden md:flex px-4 py-2 rounded-full bg-[#111] border border-[#222] text-[11px] font-bold text-[#888] hover:text-white">Home</a>
+    <a href="admin.html" class="px-5 py-2 rounded-full bg-white text-black text-[11px] font-black">Admin Panel</a>
+  </div>
+</header>
+
+<div class="flex">
+  <!-- SIDEBAR -->
+  <div class="w-[260px] bg-black border-r border-[#121212] p-5 hidden lg:block min-h-[calc(100vh-57px)]">
+    <p class="text-[10px] font-black tracking-[0.25em] text-pink-300/60">DASHBOARD</p>
+    <div class="mt-4 space-y-3">
+      <div class="p-4 rounded-2xl bg-gradient-to-br from-[#1a0a14] to-[#0f0510] border border-pink-500/15"><p class="text-[10px] text-pink-300/60 tracking-widest">TOTAL REPORTS</p><p id="totalCount" class="font-black text-2xl text-white mt-1">0</p><div class="mt-2 h-1 bg-[#222] rounded-full overflow-hidden"><div class="h-full w-full bg-gradient-to-r from-pink-500 to-fuchsia-600"></div></div></div>
+      <div class="p-4 rounded-2xl bg-[#0a0a0a] border border-amber-500/10"><p class="text-[10px] text-amber-300/60 tracking-widest">PENDING REVIEW</p><p id="pendingCount" class="font-black text-2xl text-amber-300 mt-1">0</p></div>
+      <div class="p-4 rounded-2xl bg-[#0a0a0a] border border-pink-500/10"><p class="text-[10px] text-pink-300/60 tracking-widest">WOMEN HELPLINE</p><p id="womenCount" class="font-black text-2xl text-pink-400 mt-1">0</p></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="p-3 rounded-2xl bg-[#0a0a0a] border border-[#1a1a1a]"><p class="text-[9px] text-[#555]">RESOLVED</p><p id="resolvedCount" class="font-black text-lg text-white">0</p></div>
+        <div class="p-3 rounded-2xl bg-[#0a0a0a] border border-[#1a1a1a]"><p class="text-[9px] text-[#555]">TRUE / FALSE</p><p class="font-black text-lg"><span id="trueCount" class="text-red-400">0</span> / <span id="falseCount" class="text-amber-400">0</span></p></div>
+      </div>
+    </div>
+    <div class="mt-8 p-4 rounded-2xl bg-gradient-to-br from-pink-500/10 to-fuchsia-600/10 border border-pink-500/20">
+      <p class="text-[11px] font-black text-pink-200"><i class="fa-solid fa-circle-info mr-1"></i> Policy</p>
+      <p class="text-[10px] text-pink-200/60 mt-2 leading-[14px]">TRUE = Guilty user gets <b class="text-red-300">PERMANENT BAN</b><br>FALSE = Female gets <b class="text-amber-300">PERMANENT BAN</b> for misuse + victim unbanned. Zero tolerance.</p>
+    </div>
+    <div class="mt-6 flex flex-col gap-2">
+      <a href="index.html" class="px-4 py-3 rounded-full bg-[#111] border border-[#222] text-xs font-bold text-[#888] text-center hover:text-white"><i class="fa-solid fa-house mr-2"></i>Back to Home</a>
+      <a href="admin.html" class="px-4 py-3 rounded-full bg-white text-black text-xs font-black text-center"><i class="fa-solid fa-shield-halved mr-2"></i>Main Admin Panel</a>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="flex-1 p-4 md:p-7 max-w-[950px]">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-[22px] font-black tracking-tight">Women Safety <span class="text-pink-500">Queue</span></h2>
+      <div class="flex gap-2">
+        <button onclick="filterTickets('all')" class="filter-btn px-4 py-2 rounded-full bg-white text-black text-[11px] font-black">All</button>
+        <button onclick="filterTickets('women')" class="filter-btn px-4 py-2 rounded-full bg-[#1a1a1a] text-[#666] text-[11px] font-bold border border-[#222]">Women Helpline</button>
+        <button onclick="filterTickets('pending')" class="filter-btn px-4 py-2 rounded-full bg-[#1a1a1a] text-[#666] text-[11px] font-bold border border-[#222]">Pending</button>
+        <button onclick="filterTickets('resolved')" class="filter-btn px-4 py-2 rounded-full bg-[#1a1a1a] text-[#666] text-[11px] font-bold border border-[#222]">Resolved</button>
+      </div>
+    </div>
+    <div id="ticketsList" class="mt-6"></div>
+  </div>
+</div>
+
+<!-- CHAT MODAL -->
+<div id="chatModal" class="hidden fixed inset-0 z-[100] bg-black/80 backdrop-blur-2xl items-end md:items-center justify-center p-0 md:p-4">
+<div class="bg-[#0f0f0f] w-full max-w-[540px] h-[92dvh] md:h-[82vh] md:rounded-[28px] rounded-t-[28px] border border-pink-500/20 flex flex-col overflow-hidden shadow-[0_0_80px_rgba(236,72,153,0.15)]">
+<div class="p-4 border-b border-[#1a1a1a] flex items-center justify-between bg-gradient-to-r from-[#1a0a14] to-black"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-gradient-to-br from-pink-500 to-fuchsia-600 flex items-center justify-center"><i class="fa-solid fa-shield-heart text-xs text-white"></i></div><div><p class="text-[14px] font-black">Encrypted Safety Chat</p><p class="text-[10px] text-pink-300 font-bold">ADMIN MODE - Always Open</p></div></div><button onclick="closeChat()" class="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#222] flex items-center justify-center"><i class="fa-solid fa-xmark text-xs"></i></button></div>
+<div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-1 bg-[#080808]"></div>
+<div id="chatClosedMsg" class="hidden p-3 bg-pink-500/5 border-t border-pink-500/10 text-center"></div>
+<div id="chatInputArea" class="p-3 border-t border-[#1a1a1a] bg-black flex gap-2 items-center"><input id="chatInput" placeholder="Type message..." class="flex-1 bg-[#111] border border-[#222] rounded-full px-5 py-3 text-[13.5px] text-white outline-none focus:border-pink-500/40" onkeydown="if(event.key==='Enter') sendMessage()"><button onclick="sendMessage()" class="w-11 h-11 bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-pink-500/20"><i class="fa-solid fa-paper-plane text-xs"></i></button></div>
+</div>
+</div>
+</body>
+</html>

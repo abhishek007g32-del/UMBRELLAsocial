@@ -1,0 +1,217 @@
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Messages / UMBRELLAsocial • Secure</title>
+<script>(function(){ try{ const c=JSON.parse(localStorage.getItem('umbrella_ban_cache')||'null'); if(c&&c.banned){ const u=c.until?new Date(c.until):null; if(!u||u>new Date()){ if(!location.pathname.includes('banned.html')) location.replace('banned.html'); }} }catch(e){} })();</script>
+<style>#mainApp{display:none} #banCheckLoader{display:flex}</style>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyC4DGER69Xfc3P_xcQR5RtXH3oBuLP9rKY",authDomain:"umbrellasocial.firebaseapp.com",projectId:"umbrellasocial",storageBucket:"umbrellasocial.firebasestorage.app",messagingSenderId:"126237795119",appId:"1:126237795119:web:db54ac49f178e0136bf7da"};
+if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore(); const auth=firebase.auth();
+let currentUid=null, mutualCache={}, activeChatUid=null, chatUnsub=null, selectedImageBase64='';
+
+function cleanH(h){ if(!h) return 'user'; return h.toString().replace(/@/g,'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'')||'user'; }
+function escapeHtml(t){ return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function formatTime(ts){ if(!ts) return 'now'; try{ const d=ts.toDate?ts.toDate():new Date(ts); return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }catch(e){return '';} }
+
+document.addEventListener('DOMContentLoaded',()=>{
+ const logged=localStorage.getItem('umbrella_is_logged_in');
+ auth.onAuthStateChanged(u=>{
+  if(u && logged==='true'){
+   currentUid=u.uid;
+   db.collection('users').doc(u.uid).onSnapshot(snap=>{
+    if(snap.exists && snap.data().isBanned){ location.replace('banned.html'); return; }
+    document.getElementById('banCheckLoader').style.display='none';
+    document.getElementById('mainApp').style.display='flex';
+    loadMutualConversations();
+   });
+  } else location.href='auth.html';
+ });
+});
+
+async function checkIsMutual(otherUid){
+ if(mutualCache[otherUid]!==undefined) return mutualCache[otherUid];
+ if(!otherUid||otherUid===currentUid) return false;
+ const [iFollow,theyFollow]=await Promise.all([db.collection('follows').where('followerId','==',currentUid).where('followingId','==',otherUid).limit(1).get(), db.collection('follows').where('followerId','==',otherUid).where('followingId','==',currentUid).limit(1).get()]);
+ const mutual=!iFollow.empty&&!theyFollow.empty; mutualCache[otherUid]=mutual; return mutual;
+}
+
+async function loadMutualConversations(){
+ const list=document.getElementById('conversationsList');
+ const snap=await db.collection('follows').where('followerId','==',currentUid).get();
+ const followingIds=snap.docs.map(d=>d.data().followingId);
+ if(!followingIds.length){ list.innerHTML=`<div class="p-12 text-center text-white/30 text-[12px]">No mutuals</div>`; return; }
+ let mutualUsers=[];
+ for(const fid of followingIds){ if(await checkIsMutual(fid)){ const uDoc=await db.collection('users').doc(fid).get(); if(uDoc.exists) mutualUsers.push({uid:fid,...uDoc.data()}); } }
+ if(!mutualUsers.length){ list.innerHTML=`<div class="p-8 text-center text-white/30 text-[11px]">No mutual follow-back</div>`; return; }
+ let html='';
+ mutualUsers.forEach(u=>{
+   const name=u.name||'User'; const initials=name.substring(0,2).toUpperCase();
+   html+=`<div onclick="openChat('${u.uid}')" class="p-4 flex items-center gap-3 border-b border-white/[0.05] hover:bg-white/[0.03] cursor-pointer"><div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center font-black text-[11px] overflow-hidden">${u.photoURL||u.profilePic?`<img src="${u.photoURL||u.profilePic}" class="w-full h-full object-cover">`:initials}</div><div class="flex-1 min-w-0"><div class="font-bold text-[13px] text-white truncate">${escapeHtml(name)}</div><p class="text-[11px] text-white/35">@${cleanH(u.username||u.handle)}</p></div><i class="fa-solid fa-chevron-right text-white/20 text-[10px]"></i></div>`;
+ });
+ list.innerHTML=html;
+}
+
+function openChat(uid){
+ if(!uid) return;
+ activeChatUid=uid;
+ document.getElementById('conversationsPanel').style.display='none';
+ document.getElementById('chatWrapper').style.display='flex';
+ db.collection('users').doc(uid).get().then(uDoc=>{
+  const ud=uDoc.exists?uDoc.data():{}; const name=ud.name||'User';
+  document.getElementById('activeName').innerText=name;
+  document.getElementById('activeHandle').innerText='@'+cleanH(ud.username||ud.handle);
+  document.getElementById('activeAvatar').innerHTML=ud.photoURL||ud.profilePic?`<img src="${ud.photoURL||ud.profilePic}" class="w-full h-full object-cover">`:name.substring(0,2).toUpperCase();
+ });
+ const container=document.getElementById('messagesContainer');
+ const chatId=[currentUid,uid].sort().join('_');
+ if(chatUnsub) chatUnsub();
+ chatUnsub=db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp','asc').onSnapshot(snap=>{
+  if(snap.empty){ container.innerHTML=`<div class="py-12 text-center"><p class="font-black text-white text-[13px]">Say Hi! ☂️</p><p class="text-[10px] text-zinc-500 mt-2">Be respectful - No hate, abuse, political, anti-national, AI, fake news</p></div>`; return; }
+  let html='';
+  snap.forEach(doc=>{
+    const m=doc.data(); const isMe=m.senderId===currentUid; const time=formatTime(m.timestamp);
+    const img=m.imageUrl?`<img src="${m.imageUrl}" class="rounded-xl mt-2 border border-white/10" style="max-height:200px; max-width:200px; object-fit:cover;">`:'';
+    const txt=m.text?`<div style="font-size:12px; line-height:16px;">${escapeHtml(m.text)}</div>`:'';
+    if(isMe) html+=`<div style="display:flex; justify-content:flex-end; margin-bottom:8px;"><div style="background:white; color:black; border-radius:16px; border-bottom-right-radius:4px; padding:8px 12px; max-width:58%;"><div>${txt}${img}</div><div style="font-size:9px; opacity:0.5; text-align:right; margin-top:4px;">${time} 🔒</div></div></div>`;
+    else html+=`<div style="display:flex; gap:8px; margin-bottom:8px;"><div style="width:24px; height:24px; background:rgba(255,255,255,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:8px; flex-shrink:0;">${m.senderName?.substring(0,2).toUpperCase()||'U'}</div><div style="background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); border-radius:16px; border-bottom-left-radius:4px; padding:8px 12px; max-width:58%; color:white;"><div>${txt}${img}</div><div style="font-size:9px; color:rgba(255,255,255,0.3); margin-top:4px;">${time}</div></div></div>`;
+  });
+  container.innerHTML=html;
+  const h=document.getElementById('chatHistory'); h.scrollTop=h.scrollHeight;
+ });
+}
+
+function closeChat(){
+ if(chatUnsub) chatUnsub();
+ document.getElementById('chatWrapper').style.display='none';
+ document.getElementById('conversationsPanel').style.display='flex';
+ activeChatUid=null;
+}
+function filterChats(){ const q=document.getElementById('searchChat').value.toLowerCase(); document.querySelectorAll('#conversationsList > div').forEach(el=>{ el.style.display=el.innerText.toLowerCase().includes(q)?'flex':'none'; }); }
+function handleImageSelect(e){ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=ev=>{ const img=new Image(); img.onload=()=>{ const c=document.createElement('canvas'); let w=img.width,h=img.height; const MAX=400; if(w>MAX||h>MAX){ if(w>h){ h*=MAX/w; w=MAX; } else { w*=MAX/h; h=MAX; } } c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); selectedImageBase64=c.toDataURL('image/jpeg',0.6); document.getElementById('previewImg').src=selectedImageBase64; document.getElementById('imagePreviewBox').classList.remove('hidden'); }; img.src=ev.target.result; }; r.readAsDataURL(f); }
+function clearImagePreview(){ selectedImageBase64=''; document.getElementById('imagePreviewBox').classList.add('hidden'); }
+
+// === SAFETY SYSTEM FOR MESSAGES ===
+const BANNED_MSG_WORDS=['chutiya','bhenchod','madarchod','bsdk','gandu','randi','bhosdi','harami','suar','fuck','bitch','slut','whore','asshole','kill you','anti india','anti national','desh drohi','khalistan','pakistan zindabad','tukde tukde','bjp','congress','modi','rahul gandhi','election fraud','midjourney','stable diffusion','ai generated','isis','terrorist'];
+function checkMessageSafety(text){
+  if(!text) return {safe:true};
+  const low=text.toLowerCase();
+  for(let w of BANNED_MSG_WORDS){ if(low.includes(w.toLowerCase())) return {safe:false, word:w, reason:`Blocked: "${w}" — No hate/abuse/political/anti-national/AI/fake allowed.`}; }
+  if(/anti\s*national/i.test(text) || /anti\s*india/i.test(text) || /hate\s*(muslim|hindu|christian|sikh|dalit)/i.test(text)) return {safe:false, word:'hate/political', reason:'Hate / Political / Anti-national content not allowed in messages.'};
+  return {safe:true};
+}
+
+async function sendMessage(){
+  const input=document.getElementById('messageInput');
+  const text=input.value.trim();
+  const errBox=document.getElementById('msgSafetyError');
+  if(errBox) errBox.classList.add('hidden');
+  if((!text&&!selectedImageBase64)||!activeChatUid) return;
+
+  // Safety check first
+  const safety=checkMessageSafety(text);
+  if(!safety.safe){
+    if(errBox){ errBox.innerText='⛔ '+safety.reason; errBox.classList.remove('hidden'); }
+    else alert('⛔ '+safety.reason);
+    let v=parseInt(localStorage.getItem('umbrella_msg_violation_'+currentUid)||'0')+1;
+    localStorage.setItem('umbrella_msg_violation_'+currentUid, v);
+    if(v>=3){
+      alert('⛔ 3 violations in messages. Account locked for Aadhar + Face verification.');
+      const emailSnap=await db.collection('users').doc(currentUid).get();
+      const email=emailSnap.exists?emailSnap.data().email:'';
+      if(email){
+        localStorage.setItem('umbrella_permanent_lock_'+email.toLowerCase(), 'true');
+        localStorage.setItem('umbrella_lock_'+email.toLowerCase(), new Date('2099-12-31').toISOString());
+        location.href='security_check.html?email='+encodeURIComponent(email);
+      }
+      return;
+    }
+    return;
+  }
+
+  if(!await checkIsMutual(activeChatUid)){ alert('Not mutual'); return; }
+  const chatId=[currentUid,activeChatUid].sort().join('_');
+  const myDoc=await db.collection('users').doc(currentUid).get();
+  const myName=myDoc.exists?myDoc.data().name:'User';
+  await db.collection('chats').doc(chatId).collection('messages').add({text:text||'',imageUrl:selectedImageBase64||'',senderId:currentUid,senderName:myName,timestamp:firebase.firestore.FieldValue.serverTimestamp(),expiresAt:firebase.firestore.Timestamp.fromDate(new Date(Date.now()+86400000))});
+  await db.collection('chats').doc(chatId).set({participants:[currentUid,activeChatUid],lastMessage:text||'Image',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  input.value=''; clearImagePreview();
+}
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+html,body{height:100%; margin:0; overflow:hidden; background:#050507; font-family:'Inter',sans-serif; color:#e7e9ea;}
+#mainApp{height:100dvh; width:100%; max-width:760px; margin:0 auto; display:flex; flex-direction:column; background:#08080a; border-left:1px solid rgba(255,255,255,0.06); border-right:1px solid rgba(255,255,255,0.06); overflow:hidden;}
+#topBar{flex-shrink:0; height:56px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; border-bottom:1px solid rgba(255,255,255,0.06); background:rgba(8,8,10,0.95); backdrop-filter:blur(16px);}
+#conversationsPanel{flex:1; display:flex; flex-direction:column; overflow:hidden;}
+#conversationsList{flex:1; overflow-y:auto;}
+#chatWrapper{display:none; flex:1; background:#050507; padding:12px; overflow:hidden; justify-content:center; align-items:center;}
+#chatPanel{width:100%; max-width:480px; height:100%; max-height:580px; background:#0f0f0f; border:1px solid rgba(255,255,255,0.12); border-radius:20px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.6);}
+#chatHeader{flex-shrink:0; height:52px; display:flex; align-items:center; justify-content:space-between; padding:0 12px; border-bottom:1px solid rgba(255,255,255,0.06); background:#111;}
+#chatHistory{flex:1; overflow-y:auto; overflow-x:hidden; padding:12px; background:#08080a;}
+#chatInputBar{flex-shrink:0; padding:10px; border-top:1px solid rgba(255,255,255,0.06); background:#111;}
+@media(max-width:640px){#chatWrapper{padding:8px;} #chatPanel{max-width:100%; max-height:85vh; border-radius:16px;}}
+</style>
+</head>
+<body>
+<div id="banCheckLoader" class="fixed inset-0 z-[9999] bg-[#050507] flex items-center justify-center"><div class="w-10 h-10 border-2 border-white/10 border-t-white rounded-full animate-spin"></div></div>
+<div id="mainApp">
+  <div id="topBar">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <a href="homepage.html" style="width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.7);"><i class="fa-solid fa-arrow-left" style="font-size:14px;"></i></a>
+      <div style="display:flex; align-items:center; gap:10px;"><div style="width:32px; height:32px; background:white; color:black; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900;"><i class="fa-solid fa-envelope" style="font-size:13px;"></i></div><div><div style="font-weight:900; font-size:15px; line-height:1;">Messages</div><div style="font-size:9px; color:rgba(255,255,255,0.4); font-weight:700; letter-spacing:0.1em; margin-top:2px;">MUTUALS • E2E • VAULT</div></div></div>
+    </div>
+    <a href="homepage.html" style="padding:6px 12px; border-radius:999px; background:white; color:black; font-weight:900; font-size:11px;">Home</a>
+  </div>
+
+  <div id="conversationsPanel">
+    <div style="margin:12px; border-radius:14px; background:rgba(29,155,240,0.1); border:1px solid rgba(29,155,240,0.15); padding:12px; display:flex; gap:10px;"><i class="fa-solid fa-lock" style="color:#1d9bf0; font-size:11px; margin-top:2px;"></i><p style="font-size:11px; color:rgba(255,255,255,0.6);"><span style="font-weight:900; color:white;">E2E encrypted</span> — Only mutuals</p></div>
+    <div style="padding:0 12px 12px;"><div style="position:relative;"><i class="fa-solid fa-magnifying-glass" style="position:absolute; left:16px; top:50%; transform:translateY(-50%); color:rgba(255,255,255,0.2); font-size:12px;"></i><input id="searchChat" onkeyup="filterChats()" placeholder="Search mutuals..." style="width:100%; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.08); border-radius:999px; padding:10px 16px 10px 44px; color:white; font-size:12px; outline:none;"></div></div>
+    <div id="conversationsList"><div style="padding:40px; text-align:center; color:rgba(255,255,255,0.2); font-size:12px;">Loading...</div></div>
+  </div>
+
+  <div id="chatWrapper">
+    <div id="chatPanel">
+      <div id="chatHeader">
+        <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+          <button onclick="closeChat()" style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fa-solid fa-arrow-left" style="font-size:11px;"></i></button>
+          <div id="activeAvatar" style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:10px; overflow:hidden; flex-shrink:0;">U</div>
+          <div style="min-width:0;"><div id="activeName" style="font-weight:900; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">User</div><div id="activeHandle" style="font-size:10px; color:rgba(255,255,255,0.35);">@user</div></div>
+        </div>
+        <button onclick="closeChat()" style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fa-solid fa-xmark" style="font-size:11px;"></i></button>
+      </div>
+
+      <div style="flex-shrink:0; padding:8px 12px; background:#0f0f0f; border-bottom:1px solid rgba(255,255,255,0.04);"><div style="padding:6px 12px; background:rgba(234,179,8,0.1); border:1px solid rgba(234,179,8,0.15); border-radius:999px; text-align:center;"><span style="font-size:9px; color:rgba(250,204,21,0.7); font-weight:700; letter-spacing:0.05em;">🔒 E2E · Auto-deletes 24h · Respect Others · No Hate/Abuse/Political</span></div></div>
+
+      <div id="chatHistory"><div id="messagesContainer" style="display:flex; flex-direction:column; gap:4px;"></div></div>
+
+      <div id="chatInputBar">
+        <p id="msgSafetyError" class="hidden mb-2 text-[10px] text-red-400 font-bold bg-red-500/10 border border-red-500/20 rounded-full px-3 py-1.5"></p>
+        <!-- SAFETY BANNER -->
+        <div class="mb-2 flex items-center gap-2 text-[10px] text-zinc-500 px-1"><i class="fa-solid fa-shield-halved text-amber-400"></i><span>Be respectful. No fake news, AI, political, anti-national, hate, abuse. Violation = ban + verification.</span></div>
+        <div id="imagePreviewBox" class="hidden" style="margin-bottom:8px; position:relative; width:fit-content;"><img id="previewImg" src="" style="height:64px; border-radius:12px; border:1px solid rgba(255,255,255,0.1);"><button onclick="clearImagePreview()" style="position:absolute; top:-8px; right:-8px; width:20px; height:20px; background:black; border:1px solid rgba(255,255,255,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark" style="font-size:8px;"></i></button></div>
+        <div style="display:flex; align-items:center; gap:8px; background:rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:999px; padding:6px 6px 6px 12px;"><label style="width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;"><i class="fa-regular fa-image" style="font-size:12px;"></i><input type="file" accept="image/*" class="hidden" onchange="handleImageSelect(event)"></label><input id="messageInput" onkeypress="if(event.key==='Enter')sendMessage()" placeholder="Encrypted message..." style="flex:1; background:transparent; outline:none; font-size:12px; color:white; min-width:0;"><button onclick="sendMessage()" style="width:32px; height:32px; background:white; color:black; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fa-solid fa-paper-plane" style="font-size:10px;"></i></button></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
+
+
+
+
+

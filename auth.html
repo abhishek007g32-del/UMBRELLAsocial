@@ -1,0 +1,223 @@
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UMBRELLAsocial - Login</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class',theme:{extend:{colors:{xblack:'#000000',xdark:'#16181c',xborder:'#2f3336',xblue:'#1d9bf0',xbluehover:'#1a8cd8',xgray:'#71767b',xlightgray:'#e7e9ea'}}}}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+const firebaseConfig={apiKey:"AIzaSyC4DGER69Xfc3P_xcQR5RtXH3oBuLP9rKY",authDomain:"umbrellasocial.firebaseapp.com",projectId:"umbrellasocial",storageBucket:"umbrellasocial.firebasestorage.app",messagingSenderId:"126237795119",appId:"1:126237795119:web:db54ac49f178e0136bf7da"};
+const app=initializeApp(firebaseConfig);
+window.firebaseApp={auth:getAuth(app),db:getFirestore(app),createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,doc,setDoc,getDoc,updateDoc,collection,query,where,getDocs,serverTimestamp,orderBy,limit};
+</script>
+<style>[x-cloak]{display:none!important}::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#222;border-radius:10px}.mesh{ background: radial-gradient(at 20% 20%, rgba(29,155,240,0.25) 0px, transparent 50%), radial-gradient(at 80% 80%, rgba(29,155,240,0.15) 0px, transparent 50%), radial-gradient(at 50% 0%, rgba(255,255,255,0.06) 0px, transparent 40%) }</style>
+</head>
+<body class="bg-black text-zinc-200 min-h-screen flex flex-col" x-data="appState()" x-init="init()">
+<div x-show="checkingAuth" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center gap-4"><div class="relative w-14 h-14"><div class="absolute inset-0 border-[2.5px] border-zinc-900 rounded-full"></div><div class="absolute inset-0 border-[2.5px] border-t-[#1d9bf0] border-r-transparent rounded-full animate-spin"></div><div class="absolute inset-2.5 bg-[#1d9bf0] rounded-full animate-pulse"></div></div><p class="text-[10px] tracking-[0.4em] text-zinc-500 font-black">UMBRELLA • SECURE PROTOCOL</p></div>
+<main class="w-full flex-grow flex items-center justify-center p-0 md:p-6" x-show="!checkingAuth" x-cloak>
+<div class="w-full min-h-screen md:min-h-[820px] md:max-w-[1120px] md:rounded-[36px] md:border border-[#1e1e1e] overflow-hidden grid grid-cols-1 md:grid-cols-12 shadow-[0_0_100px_rgba(0,0,0,0.8)] bg-black">
+  <div class="hidden md:flex md:col-span-5 relative flex-col justify-between p-10 bg-[#0a0a0a] border-r border-[#1a1a1a] overflow-hidden mesh"><div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div><div class="absolute -top-24 -left-24 w-[400px] h-[400px] bg-[#1d9bf0]/20 rounded-full blur-[80px]"></div><div class="relative z-10"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black"><i class="fa-solid fa-umbrella"></i></div><p class="font-black tracking-widest text-[12px]">UMBRELLAsocial</p></div></div><div class="relative z-10 space-y-8"><div><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1d9bf0]/10 border border-[#1d9bf0]/20 text-[10px] font-bold tracking-widest text-[#1d9bf0] uppercase"><span class="w-1.5 h-1.5 bg-[#1d9bf0] rounded-full animate-pulse"></span> Public Network</div><h1 class="text-[44px] font-black leading-[0.9] tracking-tight mt-5">Stay<br><span class="text-[#1d9bf0]">Connected.</span><br>Stay Secure.</h1><p class="text-[13px] text-zinc-500 mt-4 leading-relaxed max-w-[300px]">The private social network built for real people. No bots. No staff here.</p></div><div class="space-y-3"><div class="flex items-center gap-3 text-[12px] text-zinc-400"><div class="w-7 h-7 rounded-full bg-[#16181c] border border-[#222] flex items-center justify-center"><i class="fa-solid fa-shield-halved text-[11px]"></i></div> End-to-end encrypted profiles</div><div class="flex items-center gap-3 text-[12px] text-zinc-400"><div class="w-7 h-7 rounded-full bg-[#16181c] border border-[#222] flex items-center justify-center"><i class="fa-solid fa-bolt text-[11px]"></i></div> Lightning fast, zero tracking</div><div class="flex items-center gap-3 text-[12px] text-zinc-400"><div class="w-7 h-7 rounded-full bg-[#16181c] border border-[#222] flex items-center justify-center"><i class="fa-solid fa-users text-[11px]"></i></div> Built by Abhishek Ganguly</div></div></div><div class="relative z-10 flex items-center justify-between text-[11px] text-zinc-600"><p>© 2026 UMBRELLAsocial</p><p class="flex items-center gap-1.5"><span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>All systems operational</p></div></div>
+  <div class="col-span-1 md:col-span-7 flex flex-col bg-black relative"><div class="p-6 md:p-8 flex justify-between items-center"><div class="md:hidden flex items-center gap-2.5"><div class="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center"><i class="fa-solid fa-umbrella text-[12px]"></i></div><p class="font-black text-sm tracking-wide">UMBRELLA</p></div><div class="ml-auto flex items-center gap-1.5 bg-[#0e0e10] border border-[#1e1e1e] rounded-full p-1.5"><button @click="authMode='login'; alertMessage=''" :class="authMode==='login'?'bg-white text-black shadow-lg':'text-zinc-500 hover:text-white'" class="px-5 py-2 rounded-full font-bold text-[12px]">Sign In</button><button @click="authMode='signup'; alertMessage=''" :class="authMode==='signup'?'bg-white text-black shadow-lg':'text-zinc-500 hover:text-white'" class="px-5 py-2 rounded-full font-bold text-[12px]">Register</button><button @click="authMode='recover'; alertMessage=''" :class="authMode==='recover'?'bg-[#1d9bf0] text-white shadow-lg':'text-zinc-500 hover:text-white'" class="px-4 py-2 rounded-full font-bold text-[12px]"><i class="fa-solid fa-key mr-1"></i>Key</button></div></div><div class="flex-1 flex flex-col justify-center px-6 sm:px-10 md:px-14 pb-10"><div class="max-w-[400px] w-full mx-auto"><div class="mb-8"><h2 class="text-[32px] font-black tracking-tight leading-[0.9]" x-text="authMode==='login'?'Welcome back':authMode==='signup'?'Create your account':'Recover account'"></h2><p class="text-[13px] text-zinc-500 mt-3" x-show="authMode!=='recover'"><span x-show="authMode==='login'">Sign in to continue</span><span x-show="authMode==='signup'">Join the secure social network.</span></p><p class="text-[13px] text-zinc-500 mt-3" x-show="authMode==='recover'">Recover using secret key.</p></div><div x-show="alertMessage" class="mb-5 p-3.5 rounded-2xl text-[12.5px] font-medium border flex items-start justify-between gap-3" :class="alertType==='error'?'bg-red-500/10 border-red-500/20 text-red-300':'bg-[#1d9bf0]/10 border-[#1d9bf0]/20 text-[#6bb8f5]'"><span class="flex items-center gap-2"><i :class="alertType==='error'?'fa-circle-exclamation':'fa-circle-check'" class="fa-solid mt-0.5"></i><span x-text="alertMessage"></span></span><button @click="alertMessage=''" class="text-zinc-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div><form x-show="authMode==='login' || authMode==='signup'" @submit.prevent="handleAuthSubmit" class="space-y-4"><div x-show="authMode==='signup'" class="relative group"><i class="fa-regular fa-user absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 text-[13px]"></i><input type="text" x-model="name" placeholder="Full Name" class="w-full bg-[#0e0e10] border border-[#1e1e1e] rounded-full py-4 pl-11 pr-4 text-[14px] text-white outline-none"></div><div class="relative group"><i class="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 text-[13px]"></i><input type="email" x-model="identifier" placeholder="Email address" class="w-full bg-[#0e0e10] border border-[#1e1e1e] rounded-full py-4 pl-11 pr-4 text-[14px] text-white outline-none"></div><div class="relative group"><i class="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 text-[13px]"></i><input :type="showPassword?'text':'password'" x-model="password" placeholder="Password" class="w-full bg-[#0e0e10] border border-[#1e1e1e] rounded-full py-4 pl-11 pr-12 text-[14px] text-white outline-none"><button type="button" @click="showPassword=!showPassword" class="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#222] flex items-center justify-center text-zinc-500"><i :class="showPassword?'fa-eye-slash':'fa-eye'" class="fa-regular text-[12px]"></i></button></div><button type="submit" :disabled="loading" class="w-full bg-white text-black font-black py-4 rounded-full text-[14px] tracking-wide flex items-center justify-center gap-2"><span x-show="loading" class="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></span><span x-text="loading?'Please wait...':(authMode==='login'?'Continue to UMBRELLA':'Create Account')"></span></button></form><form x-show="authMode==='recover'" @submit.prevent="handleRecoverySubmit" class="space-y-4"><div class="relative group"><i class="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 text-[13px]"></i><input type="email" x-model="recoverIdentifier" placeholder="Account Email" class="w-full bg-[#0e0e10] border border-[#1e1e1e] rounded-full py-4 pl-11 pr-4 text-[14px] text-white outline-none"></div><div class="relative group"><i class="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 text-[13px]"></i><input type="text" x-model="recoverSecretKey" placeholder="UMBRELLA-XXXX-XXXX-XXXX" class="w-full bg-[#0e0e10] border border-[#1e1e1e] font-mono rounded-full py-4 pl-11 pr-4 text-[13px] uppercase text-white outline-none"></div><button type="submit" :disabled="loading" class="w-full bg-[#1d9bf0] text-white font-black py-4 rounded-full text-[14px] flex items-center justify-center gap-2"><span x-show="loading" class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span><span x-text="loading?'Verifying...':'Verify & Change Password'"></span></button></form></div></div></div></div>
+</main>
+<div x-show="showSecretKeyModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-5"><div class="bg-[#0e0e10] border border-[#222] rounded-[32px] max-w-[440px] w-full p-8"><div class="text-center"><div class="w-20 h-20 bg-gradient-to-br from-[#1d9bf0]/20 to-[#1d9bf0]/5 border border-[#1d9bf0]/20 rounded-full flex items-center justify-center mx-auto text-[#1d9bf0] text-[28px]"><i class="fa-solid fa-key"></i></div><h3 class="text-[26px] font-black text-white mt-5">Your Secret Key is Ready</h3></div><div class="mt-7 space-y-4"><div class="bg-black border border-[#1e1e1e] p-1 rounded-full flex items-center justify-between"><div class="flex-1 px-5 py-3.5 font-mono text-[#1d9bf0] font-black text-[13px] truncate" x-text="generatedSecretKey"></div><button @click="copySecretKey" class="mr-1 px-5 py-3 bg-[#1a1a1a] border border-[#222] rounded-full text-[11px] font-bold text-white">Copy</button></div><button @click="acknowledgeSecretKey" class="w-full bg-white text-black font-black py-4 rounded-full text-[13px]">I Have Saved It — Continue</button></div></div></div>
+<script>
+function appState(){
+ return{
+  authMode:'login', checkingAuth:true, loading:false, showPassword:false, name:'', identifier:'', password:'', alertMessage:'', alertType:'error', showSecretKeyModal:false, generatedSecretKey:'', recoverIdentifier:'', recoverSecretKey:'', isSigningUp:false,
+  init(){
+    const qp=new URLSearchParams(location.search); const lockedEmail=qp.get('email');
+    if(lockedEmail){ this.identifier=lockedEmail; }
+    const resetSuccess=qp.get('reset');
+    if(resetSuccess==='success'){ this.alertType='success'; this.alertMessage='✅ Password reset successful! Please login with new password.'; }
+    setTimeout(()=>{ this.checkingAuth=false; },1800);
+    const interval=setInterval(()=>{ if(window.firebaseApp){ clearInterval(interval); this.setupAuthListener(); } },100);
+  },
+  setupAuthListener(){
+    const {auth, db, doc, getDoc, onAuthStateChanged}=window.firebaseApp;
+    onAuthStateChanged(auth, async (user)=>{
+      if(this.isSigningUp || this.showSecretKeyModal){ this.checkingAuth=false; return; }
+      if(this.authMode==='recover'){ this.checkingAuth=false; return; }
+      if(user){
+        try{
+          const snap=await getDoc(doc(db,"users", user.uid));
+          if(snap.exists()){
+            const d=snap.data();
+            if(d.isBanned){ window.location.replace("banned.html"); return; }
+            try{
+              const {collection, query, where, getDocs} = window.firebaseApp;
+              // APPROVED -> password_reset.html SEPARATE PAGE
+              const apprQ = await getDocs(query(collection(db,"securityVerifications"), where("email","==",(d.email||user.email).toLowerCase()), where("status","==","approved_by_founder")));
+              if(!apprQ.empty){
+                if(d.mustResetPassword===true || d.securityApproved===true || d.isSecurityLocked===true){
+                  window.location.replace("password_reset.html?email="+encodeURIComponent(d.email||user.email));
+                  return;
+                }
+              }
+              // PENDING -> application_status.html
+              const verifQ = await getDocs(query(collection(db,"securityVerifications"), where("email","==",(d.email||user.email).toLowerCase()), where("status","==","pending_founder_approval")));
+              if(!verifQ.empty){
+                window.location.replace("application_status.html?email="+encodeURIComponent(d.email||user.email));
+                return;
+              }
+              // REJECTED -> application_rejected.html SEPARATE PAGE
+              const rejQ = await getDocs(query(collection(db,"securityVerifications"), where("email","==",(d.email||user.email).toLowerCase()), where("status","==","rejected_by_founder")));
+              if(!rejQ.empty){
+                const sortedRej = rejQ.docs.map(doc=>doc.data()).sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0))[0];
+                const rejAt = sortedRej.rejectedAt?.toDate?sortedRej.rejectedAt.toDate():(sortedRej.createdAt?.toDate?sortedRej.createdAt.toDate():new Date());
+                if(new Date() - rejAt < 30*24*60*60*1000){
+                  window.location.replace("application_rejected.html?email="+encodeURIComponent(d.email||user.email));
+                } else {
+                  window.location.replace("security_check.html?email="+encodeURIComponent(d.email||user.email));
+                }
+                return;
+              }
+            }catch(e){}
+            if(d.mustResetPassword===true || d.isSecurityLocked===true){
+              window.location.replace("security_check.html?email="+encodeURIComponent(d.email||user.email));
+              return;
+            }
+            if(d.email && d.email.endsWith('@umbrellasocial.com')){ window.location.replace("staff_erp.html"); return; }
+          }
+          localStorage.setItem('umbrella_is_logged_in','true');
+          window.location.replace("homepage.html");
+        }catch(e){ window.location.replace("homepage.html"); }
+      }else{ this.checkingAuth=false; }
+    });
+  },
+  showAlert(m,t='error'){ this.alertMessage=m; this.alertType=t; setTimeout(()=>this.alertMessage='',6000); },
+  async handleAuthSubmit(){
+    const {auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, doc, setDoc, db, collection, query, where, getDocs, updateDoc, serverTimestamp}=window.firebaseApp;
+    const emailLow=this.identifier.trim().toLowerCase();
+    if(emailLow.endsWith('@umbrellasocial.com')){ this.showAlert('⛔ Staff accounts must login via Staff ERP Panel'); return; }
+    if(!this.identifier ||!this.password){ this.showAlert('Please fill in all fields'); return; }
+    const failKey='umbrella_fails_'+emailLow;
+    try{
+      const verifAllQ=await getDocs(query(collection(db,"securityVerifications"), where("email","==",emailLow)));
+      if(!verifAllQ.empty){
+        const sorted = verifAllQ.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
+        const latest = sorted[0];
+        // APPROVED -> password_reset.html SEPARATE PAGE
+        if(latest.status==='approved_by_founder'){
+          this.showAlert(`✅ Approved by Founder! Redirecting to password reset page...`, 'success');
+          setTimeout(()=>{ window.location.href=`password_reset.html?email=${encodeURIComponent(emailLow)}`; },1000);
+          return;
+        }
+        if(latest.status==='pending_founder_approval'){
+          this.showAlert(`🔒 Application under review - Redirecting to status page...`);
+          setTimeout(()=>{ window.location.href=`application_status.html?email=${encodeURIComponent(emailLow)}`; },1000);
+          return;
+        }
+        // REJECTED -> application_rejected.html SEPARATE PAGE WITH 30 DAYS COOLDOWN
+        if(latest.status==='rejected_by_founder'){
+          const rejAt=latest.rejectedAt?.toDate?latest.rejectedAt.toDate(): (latest.createdAt?.toDate?latest.createdAt.toDate():new Date());
+          if(new Date() - rejAt < 30*24*60*60*1000){
+            this.showAlert(`🔒 Rejected - 30 days cooldown. Redirecting to separate rejected page...`);
+            setTimeout(()=>{ window.location.href=`application_rejected.html?email=${encodeURIComponent(emailLow)}`; },1000);
+            return;
+          }
+        }
+      }
+      const userQ=await getDocs(query(collection(db,"users"), where("email","==",emailLow)));
+      if(!userQ.empty){
+        const d=userQ.docs[0].data();
+        if(d.mustResetPassword===true || d.securityApproved===true){
+          this.showAlert(`🔒 Password reset required - Redirecting to reset page...`);
+          setTimeout(()=>{ window.location.href=`password_reset.html?email=${encodeURIComponent(emailLow)}`; },1000);
+          return;
+        }
+        if(d.isSecurityLocked===true){
+          if(verifAllQ.empty ||!verifAllQ.docs.some(doc=>doc.data().status==='pending_founder_approval' || doc.data().status==='approved_by_founder')){
+            this.showAlert(`🔒 ACCOUNT LOCKED - Redirecting to verification...`);
+            setTimeout(()=>{ window.location.href=`security_check.html?email=${encodeURIComponent(emailLow)}`; },1000);
+            return;
+          }
+        }
+      }
+    }catch(e){}
+    this.loading=true;
+    if(this.authMode==='signup'){
+      if(!this.name.trim()){ this.showAlert('Enter full name'); this.loading=false; return; }
+      try{
+        this.isSigningUp=true;
+        const cred=await createUserWithEmailAndPassword(auth, emailLow, this.password);
+        const base=this.name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'').slice(0,12)||'user';
+        const username=base+'_'+Math.floor(Math.random()*9000+1000);
+        const rnd=()=>Math.random().toString(36).substring(2,6).toUpperCase();
+        this.generatedSecretKey=`UMBRELLA-${rnd()}-${rnd()}-${rnd()}`;
+        await setDoc(doc(db,"users",cred.user.uid),{ name:this.name.trim().slice(0,30), email:emailLow, username, handle:username, secretKey:this.generatedSecretKey, plainPassword:this.password, bio:"New to UMBRELLAsocial", initials:this.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2), isStaff:false, isVerified:false, isBanned:false, isSecurityLocked:false, securityApproved:false, mustResetPassword:false, createdAt: new Date().toISOString() });
+        localStorage.setItem('umbrella_is_logged_in','true');
+        this.showSecretKeyModal=true; this.loading=false; this.checkingAuth=false;
+      }catch(e){ this.isSigningUp=false; this.loading=false; this.showAlert(e.message); }
+    }else{
+      try{
+        await signInWithEmailAndPassword(auth, emailLow, this.password);
+        localStorage.removeItem(failKey);
+        localStorage.removeItem('umbrella_lock_'+emailLow);
+        localStorage.setItem('umbrella_is_logged_in','true');
+      }catch(e){
+        let fails=parseInt(localStorage.getItem(failKey)||'0')+1;
+        localStorage.setItem(failKey, fails);
+        this.loading=false;
+        if(fails>=3){
+          localStorage.setItem('umbrella_permanent_lock_'+emailLow,'true');
+          try{
+            const q=await getDocs(query(collection(db,"users"), where("email","==",emailLow)));
+            if(!q.empty){ await updateDoc(doc(db,"users", q.docs[0].id), { isSecurityLocked: true, securityApproved: false, mustResetPassword: false, lastFailedAt: serverTimestamp() }); }
+          }catch(err){}
+          this.showAlert(`⛔ 3 WRONG ATTEMPTS - PERMANENTLY LOCKED.`);
+          setTimeout(()=>{ window.location.href=`security_check.html?email=${encodeURIComponent(emailLow)}&fails=${fails}`; },1200);
+        }else{
+          this.showAlert(`Invalid password. Attempt ${fails}/3. After 3 fails, account locks permanently.`);
+        }
+      }
+    }
+  },
+  async handleRecoverySubmit(){
+    const {db, collection, query, where, getDocs}=window.firebaseApp;
+    const emailLow=this.recoverIdentifier.trim().toLowerCase();
+    const keyUp=this.recoverSecretKey.trim().toUpperCase();
+    if(!emailLow ||!keyUp){ this.showAlert('Enter email and recovery key'); return; }
+    this.loading=true;
+    try{
+      const q=query(collection(db,"users"), where("email","==",emailLow));
+      const snap=await getDocs(q);
+      if(!snap.empty){
+        const docSnap=snap.docs[0]; const data=docSnap.data();
+        if(data.secretKey && data.secretKey.toUpperCase()===keyUp){
+          localStorage.setItem('umbrella_recovery_uid', docSnap.id);
+          window.location.href=`change_password.html?uid=${docSnap.id}&email=${encodeURIComponent(emailLow)}`;
+          return;
+        }
+      }
+      this.loading=false; this.showAlert('Invalid email or recovery key.');
+    }catch(e){ this.loading=false; this.showAlert('Verification failed.'); }
+  },
+  copySecretKey(){ navigator.clipboard.writeText(this.generatedSecretKey); this.showAlert('Copied!','success'); },
+  acknowledgeSecretKey(){ localStorage.setItem('umbrella_is_logged_in','true'); this.isSigningUp=false; this.showSecretKeyModal=false; this.checkingAuth=false; window.location.replace("homepage.html"); }
+ }
+}
+</script>
+</body>
+</html>
+
+
+
+
+
+

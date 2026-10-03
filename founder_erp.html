@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOUNDER COMMAND - UMBRELLAsocial | Level 10 Access</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, deleteDoc, onSnapshot, addDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+const firebaseConfig={apiKey:"AIzaSyC4DGER69Xfc3P_xcQR5RtXH3oBuLP9rKY",authDomain:"umbrellasocial.firebaseapp.com",projectId:"umbrellasocial",storageBucket:"umbrellasocial.firebasestorage.app",messagingSenderId:"126237795119",appId:"1:126237795119:web:db54ac49f178e0136bf7da"};
+const app=initializeApp(firebaseConfig); const secApp=initializeApp(firebaseConfig,"sec");
+const auth=getAuth(app); const secAuth=getAuth(secApp); const db=getFirestore(app); const storage=getStorage(app);
+window.app={auth, secAuth, db, storage, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, deleteDoc, onSnapshot, addDoc, orderBy, ref, uploadBytes, getDownloadURL};
+</script>
+<style>
+[x-cloak]{display:none!important}
+.glass{background:rgba(16,16,16,0.7);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.06)}
+.glass-strong{background:rgba(18,18,18,0.85);backdrop-filter:blur(30px);border:1px solid rgba(251,191,36,0.12)}
+.gold-glow{box-shadow:0 0 60px rgba(251,191,36,0.12), inset 0 1px 0 rgba(255,255,255,0.08)}
+.gold-glow-hover:hover{box-shadow:0 0 80px rgba(251,191,36,0.2), inset 0 1px 0 rgba(255,255,255,0.1); border-color: rgba(251,191,36,0.2)}
+@keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+.scan::after{content:'';position:absolute;top:0;left:0;width:45%;height:100%;background:linear-gradient(90deg,transparent,rgba(251,191,36,0.12),transparent);animation:scan 3s infinite}
+@keyframes pulse-gold{0%,100%{box-shadow:0 0 20px rgba(251,191,36,0.3)}50%{box-shadow:0 0 40px rgba(251,191,36,0.5)}}
+.grid-bg{background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 32px 32px}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:#222;border-radius:10px}
+</style>
+</head>
+<body class="bg-[#050505] text-white min-h-screen" x-data="founder()" x-init="init()">
+
+<div x-show="checking" x-cloak class="fixed inset-0 bg-[#030303] z-[100] flex flex-col items-center justify-center gap-5">
+  <div class="relative w-20 h-20">
+    <div class="absolute inset-0 border-[2px] border-zinc-900 rounded-full"></div>
+    <div class="absolute inset-0 border-[2px] border-t-amber-400 border-r-transparent rounded-full animate-spin"></div>
+    <div class="absolute inset-3 bg-gradient-to-br from-amber-300 to-orange-600 rounded-full animate-pulse"></div>
+  </div>
+  <div class="text-center">
+    <p class="text-[11px] tracking-[0.5em] text-amber-400 font-black">FOUNDER VERIFICATION</p>
+    <p class="text-[10px] text-zinc-600 mt-1 tracking-widest">BIOMETRIC • IP • CLEARANCE L10</p>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div x-show="!checking &&!isFounder" x-cloak class="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-[#030303]">
+  <div class="absolute inset-0 grid-bg opacity-40"></div>
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(251,191,36,0.18),transparent_60%),radial-gradient(ellipse_at_bottom,_rgba(120,60,0,0.12),transparent_60%)]"></div>
+  <div class="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[120px]"></div>
+  <div class="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-orange-600/10 rounded-full blur-[120px]"></div>
+
+  <div class="w-full max-w-[460px] glass-strong gold-glow rounded-[36px] p-9 relative z-10">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 bg-gradient-to-br from-amber-300 to-orange-600 rounded-full flex items-center justify-center text-black font-black shadow-[0_0_30px_rgba(251,191,36,0.4)]"><i class="fa-solid fa-crown text-[13px]"></i></div>
+        <div><p class="font-black text-[14px] tracking-[0.15em]">UMBRELLAsocial</p><p class="text-[9px] text-amber-400 tracking-[0.3em] font-black">FOUNDER PROTOCOL</p></div>
+      </div>
+      <div class="px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[9px] text-amber-300 font-black tracking-[0.2em]"><span class="w-1.5 h-1.5 bg-green-400 rounded-full inline-block animate-pulse mr-1.5"></span>SECURED</div>
+    </div>
+
+    <div class="mt-9">
+      <h1 class="font-black text-[36px] leading-[0.85] tracking-tight">Founder<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-orange-500">Vault</span></h1>
+      <div class="mt-4 flex items-center gap-2"><div class="w-8 h-[1px] bg-gradient-to-r from-amber-400 to-transparent"></div><p class="text-[11px] tracking-[0.2em] text-zinc-500 font-bold uppercase">Level 10 Clearance Required</p></div>
+      <p class="text-[12.5px] text-zinc-400 mt-4 leading-[1.6] font-medium">This command center is <span class="text-white font-bold">exclusively reserved for the Founder</span>. Unauthorized access is prohibited.</p>
+    </div>
+
+    <div class="mt-6 flex items-center gap-2.5 p-3 rounded-2xl bg-[#0a0a0a] border border-[#1a1a1a]">
+      <div class="w-8 h-8 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center"><i class="fa-solid fa-shield-halved text-[12px] text-green-400"></i></div>
+      <div class="flex-1"><p class="text-[11px] font-bold text-zinc-300">Military-Grade Encryption Active</p><p class="text-[10px] text-zinc-600">Biometric • IP Tracking • End-to-End Secured</p></div>
+      <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+    </div>
+
+    <div class="space-y-3.5 mt-7">
+      <div class="relative group"><i class="fa-regular fa-envelope absolute left-5 top-1/2 -translate-y-1/2 text-zinc-600 text-[13px] group-focus-within:text-amber-400 transition"></i><input x-model="email" placeholder="founder@umbrellasocial.com" class="w-full bg-black/80 border border-[#1e1e1e] rounded-full py-4 pl-12 pr-5 text-[13.5px] outline-none focus:border-amber-500/40"></div>
+      <div class="relative group"><i class="fa-solid fa-key absolute left-5 top-1/2 -translate-y-1/2 text-zinc-600 text-[13px] group-focus-within:text-amber-400 transition"></i><input x-model="password" type="password" placeholder="Founder Key" @keyup.enter="login()" class="w-full bg-black/80 border border-[#1e1e1e] rounded-full py-4 pl-12 pr-5 text-[13.5px] outline-none focus:border-amber-500/40"></div>
+      <div x-show="alertMsg" class="p-3.5 rounded-2xl text-[12px] border bg-red-500/10 border-red-500/20 text-red-400 flex items-center gap-2"><i class="fa-solid fa-circle-exclamation"></i><span x-text="alertMsg"></span></div>
+      <button @click="login()" class="w-full bg-gradient-to-r from-amber-300 to-orange-500 text-black font-black py-4 rounded-full text-[13px] tracking-[0.05em] shadow-[0_0_40px_rgba(251,191,36,0.35)] hover:shadow-[0_0_60px_rgba(251,191,36,0.5)] hover:scale-[1.01] active:scale-[0.99] transition-all">UNLOCK FOUNDER VAULT <i class="fa-solid fa-arrow-right ml-2"></i></button>
+      <p class="text-center text-[10px] text-zinc-600 mt-2 tracking-widest"><i class="fa-solid fa-lock mr-1"></i> AUTHORIZED PERSONNEL ONLY</p>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div x-show="!checking && isFounder" x-cloak class="min-h-screen flex bg-[#050505] relative">
+  <div class="absolute inset-0 grid-bg opacity-20 pointer-events-none"></div>
+
+  <!-- SIDEBAR -->
+  <div class="w-[310px] bg-[#080808]/90 backdrop-blur-2xl border-r border-[#151515] p-5 fixed h-screen flex flex-col z-20">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-gradient-to-br from-amber-300 to-orange-600 rounded-full flex items-center justify-center text-black font-black shadow-[0_0_20px_rgba(251,191,36,0.3)]"><i class="fa-solid fa-crown text-[12px]"></i></div>
+        <div><p class="font-black text-[13px] tracking-widest">UMBRELLA</p><p class="text-[9px] text-amber-400 font-black tracking-[0.25em]">FOUNDER • L10</p></div>
+      </div>
+      <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
+    </div>
+
+    <div class="mt-6 glass-strong rounded-[22px] p-4 scan relative overflow-hidden gold-glow">
+      <div class="flex items-center gap-3 relative z-10">
+        <div class="w-11 h-11 rounded-full bg-gradient-to-br from-amber-300 to-orange-600 flex items-center justify-center text-black font-black text-sm shadow-[0_0_20px_rgba(251,191,36,0.3)]" x-text="(founderData.name||'F')[0]"></div>
+        <div class="flex-1 min-w-0"><p class="font-bold text-[13px] truncate" x-text="founderData.name||'Founder'"></p><p class="text-[10px] text-amber-400 font-black">FOUNDER • SUPER ADMIN</p><p class="text-[9px] text-zinc-600 truncate mt-0.5" x-text="founderData.email"></p></div>
+      </div>
+      <div class="mt-3 flex items-center justify-between relative z-10">
+        <p class="text-[10px] text-zinc-500 font-mono" x-text="ip"></p>
+        <span class="text-[9px] px-2 py-1 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full font-bold">ONLINE</span>
+      </div>
+    </div>
+
+    <nav class="mt-6 space-y-1.5 flex-1 overflow-y-auto">
+      <template x-for="t in tabs">
+        <button @click="tab=t.id" :class="tab===t.id?'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]':'bg-[#101010]/80 text-zinc-500 hover:bg-[#151515] hover:text-zinc-300 border border-transparent hover:border-[#222]'" class="w-full flex items-center gap-3 px-4 py-3 rounded-full text-[12px] font-bold transition-all">
+          <i :class="t.icon+' w-4 text-[13px]'"></i>
+          <span x-text="t.label"></span>
+          <span x-show="t.count" class="ml-auto bg-amber-400 text-black text-[9px] px-2 py-0.5 rounded-full font-black min-w-[20px] text-center" x-text="t.count"></span>
+        </button>
+      </template>
+
+      <div class="pt-4 mt-4 border-t border-[#151515]">
+        <p class="text-[10px] text-zinc-600 font-black tracking-[0.2em] px-4 mb-2">QUICK ACCESS</p>
+
+        <!-- BYPASS BUTTON - DIRECT TO PROFILE -->
+        <button @click="goToHome()" class="w-full flex items-center gap-3 px-4 py-3 rounded-full text-[12px] font-black bg-white text-black hover:bg-zinc-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+  <i class="fa-solid fa-house w-4"></i><span>HOME - BYPASS AUTH</span><i class="fa-solid fa-arrow-up-right-from-square ml-auto text-[10px] opacity-60"></i>
+</button>
+
+        <a href="admin.html" class="mt-2 w-full flex items-center gap-3 px-4 py-3 rounded-full text-[12px] font-bold bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 text-amber-300 hover:from-amber-500/20 hover:to-orange-500/20 hover:border-amber-500/30 transition-all">
+          <i class="fa-solid fa-shield-halved w-4"></i><span>Admin Panel</span><i class="fa-solid fa-arrow-up-right-from-square ml-auto text-[10px] opacity-60"></i>
+        </a>
+      </div>
+    </nav>
+
+    <div class="mt-auto space-y-2">
+      <div class="p-3 rounded-2xl bg-[#0a0a0a] border border-[#151515] flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-lock text-[10px] text-amber-400"></i></div>
+        <div><p class="text-[10px] font-bold text-zinc-400">Session Secured</p><p class="text-[9px] text-zinc-600">Level 10 • Encrypted</p></div>
+      </div>
+      <button @click="logout()" class="w-full py-3 rounded-full bg-[#111] border border-[#1e1e1e] text-zinc-400 text-[11px] font-bold hover:bg-[#151515] hover:text-white transition">Terminate Session <i class="fa-solid fa-power-off ml-2"></i></button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="flex-1 ml-[310px] p-8 relative z-10">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <div class="flex items-center gap-3">
+          <h1 class="text-[28px] font-black tracking-tight" x-text="tabs.find(t=>t.id===tab)?.label"></h1>
+          <span class="px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-[9px] font-black text-amber-400 tracking-widest">L10 ACCESS</span>
+        </div>
+        <p class="text-[12px] text-zinc-500 mt-1">Founder Command • Real-time control matrix • <span class="text-zinc-300" x-text="new Date().toLocaleDateString()"></span></p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="px-4 py-2 glass rounded-full text-[11px] text-zinc-400 flex items-center gap-2"><span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span><span x-text="staffList.length+' Staff Active'"></span></div>
+        <div class="px-4 py-2 glass rounded-full text-[11px] text-zinc-400"><i class="fa-solid fa-globe mr-1.5"></i><span x-text="ip"></span></div>
+      </div>
+    </div>
+
+    <div x-show="tab==='overview'" x-cloak>
+      <div class="grid grid-cols-4 gap-4">
+        <div class="glass-strong gold-glow rounded-[22px] p-5 gold-glow-hover transition-all group">
+          <div class="flex justify-between items-start"><div class="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center"><i class="fa-solid fa-users-gear text-sm"></i></div><span class="text-[10px] px-2 py-1 bg-white/10 rounded-full text-zinc-400">LIVE</span></div>
+          <p class="text-[10px] text-zinc-500 uppercase tracking-widest mt-4 font-bold">Total Staff</p><p class="text-[34px] font-black mt-1" x-text="staffList.length"></p><p class="text-[11px] text-zinc-600 mt-1">Across all divisions</p>
+        </div>
+        <div class="glass rounded-[22px] p-5 hover:border-amber-500/20 transition-all group">
+          <div class="flex justify-between items-start"><div class="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center"><i class="fa-solid fa-list-check text-sm"></i></div><span class="text-[10px] px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-400">QUEUE</span></div>
+          <p class="text-[10px] text-zinc-500 uppercase tracking-widest mt-4 font-bold">Active Tasks</p><p class="text-[34px] font-black mt-1" x-text="tasks.length"></p><p class="text-[11px] text-zinc-600 mt-1" x-text="tasks.filter(t=>t.status!=='Done').length+' pending'"></p>
+        </div>
+        <div class="glass rounded-[22px] p-5 hover:border-white/10 transition-all">
+          <div class="flex justify-between items-start"><div class="w-10 h-10 rounded-full bg-[#1a1a1a] border border-[#222] text-white flex items-center justify-center"><i class="fa-solid fa-file-shield text-sm"></i></div><span class="text-[10px] px-2 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-green-400">SECURE</span></div>
+          <p class="text-[10px] text-zinc-500 uppercase tracking-widest mt-4 font-bold">Files Vault</p><p class="text-[34px] font-black mt-1 text-amber-400" x-text="allFilesCount"></p><p class="text-[11px] text-zinc-600 mt-1">Encrypted storage</p>
+        </div>
+        <div class="glass rounded-[22px] p-5 hover:border-green-500/20 transition-all">
+          <div class="flex justify-between items-start"><div class="w-10 h-10 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 flex items-center justify-center"><i class="fa-solid fa-clipboard-check text-sm"></i></div><span class="text-[10px] px-2 py-1 bg-green-500/10 rounded-full text-green-400" x-text="attendanceToday+'/'+staffList.length"></span></div>
+          <p class="text-[10px] text-zinc-500 uppercase tracking-widest mt-4 font-bold">Attendance Today</p><p class="text-[34px] font-black mt-1 text-green-400" x-text="attendanceToday"></p><p class="text-[11px] text-zinc-600 mt-1">Present now</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-4 mt-6">
+        <div class="col-span-2 glass rounded-[24px] p-6">
+          <div class="flex items-center justify-between mb-5"><h3 class="font-black text-[14px]">Staff Activity Matrix</h3><span class="text-[10px] text-zinc-600">REAL-TIME</span></div>
+          <div class="space-y-2 max-h-[280px] overflow-y-auto pr-2">
+            <template x-for="s in staffList.slice(0,6)">
+              <div class="flex items-center justify-between p-3 bg-black/40 border border-[#151515] rounded-2xl hover:border-[#222] transition">
+                <div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-[#111] border border-[#222] flex items-center justify-center font-black text-[11px]" x-text="s.name[0]"></div><div><p class="font-bold text-[12px]" x-text="s.name"></p><p class="text-[10px] text-zinc-500" x-text="s.staffRole"></p></div></div>
+                <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full" :class="s.todayPresent?'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]':'bg-zinc-700'"></span><span class="text-[10px] font-bold" :class="s.todayPresent?'text-green-400':'text-zinc-600'" x-text="s.todayPresent?'ACTIVE':'OFFLINE'"></span></div>
+              </div>
+            </template>
+          </div>
+        </div>
+        <div class="glass rounded-[24px] p-6 bg-gradient-to-b from-amber-500/[0.06] to-transparent border-amber-500/10">
+          <h3 class="font-black text-[14px]">Security Status</h3>
+          <div class="mt-6 space-y-4">
+            <div class="flex justify-between items-center"><span class="text-[11px] text-zinc-500">Encryption</span><span class="text-[11px] font-bold text-green-400">AES-256 ACTIVE</span></div>
+            <div class="h-[1px] bg-[#151515]"></div>
+            <div class="flex justify-between items-center"><span class="text-[11px] text-zinc-500">Firewall</span><span class="text-[11px] font-bold text-green-400">L10 SECURED</span></div>
+            <div class="h-[1px] bg-[#151515]"></div>
+            <div class="flex justify-between items-center"><span class="text-[11px] text-zinc-500">IP Trace</span><span class="text-[11px] font-mono text-white" x-text="ip"></span></div>
+            <div class="mt-6 p-3 rounded-2xl bg-black/60 border border-[#151515]"><p class="text-[10px] text-amber-400 font-black tracking-widest"><i class="fa-solid fa-shield-halved mr-1"></i>FOUNDER PROTOCOL</p><p class="text-[11px] text-zinc-400 mt-1 leading-relaxed">All actions are logged and monitored. Session encrypted end-to-end.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div x-show="tab==='staff'" x-cloak>
+      <div class="flex justify-between items-center"><h1 class="text-[26px] font-black">Staff Control Matrix</h1><button @click="showCreate=true" class="px-6 py-3 bg-gradient-to-r from-amber-300 to-orange-500 text-black rounded-full text-[12px] font-black shadow-[0_0_30px_rgba(251,191,36,0.3)] hover:shadow-[0_0_40px_rgba(251,191,36,0.4)] transition">+ Create Staff</button></div>
+      <div x-show="showCreate" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-xl z-[60] flex items-center justify-center p-6">
+        <div class="glass-strong gold-glow rounded-[28px] p-7 w-full max-w-md">
+          <div class="flex items-center gap-3 mb-1"><div class="w-10 h-10 rounded-full bg-amber-400 text-black flex items-center justify-center font-black"><i class="fa-solid fa-user-plus text-sm"></i></div><div><h3 class="font-black text-[16px]">Create Staff Identity</h3><p class="text-[11px] text-zinc-500">Founder clearance required</p></div></div>
+          <div class="space-y-3 mt-6">
+            <input x-model="newStaff.name" placeholder="Full Name" class="w-full bg-black border border-[#222] rounded-full py-3.5 px-5 text-[13px] outline-none focus:border-amber-500/30">
+            <input x-model="newStaff.email" placeholder="name@umbrellasocial.com" class="w-full bg-black border border-[#222] rounded-full py-3.5 px-5 text-[13px] outline-none focus:border-amber-500/30">
+            <input x-model="newStaff.password" type="password" placeholder="Password min 6" class="w-full bg-black border border-[#222] rounded-full py-3.5 px-5 text-[13px] outline-none focus:border-amber-500/30">
+            <select x-model="newStaff.role" class="w-full bg-black border border-[#222] rounded-full py-3.5 px-5 text-[13px] outline-none"><option>Support Staff</option><option>Moderator</option><option>Women Safety Team</option><option>Content Manager</option><option>Developer</option></select>
+          </div>
+          <div class="flex gap-2 mt-6"><button @click="showCreate=false" class="flex-1 py-3.5 bg-[#1a1a1a] border border-[#222] rounded-full text-[12px] font-bold hover:bg-[#222] transition">Cancel</button><button @click="createStaff()" class="flex-1 py-3.5 bg-white text-black rounded-full text-[12px] font-black hover:bg-zinc-100 transition" x-text="creating?'Creating...':'Create Staff'"></button></div>
+          <p x-show="createMsg" class="mt-4 p-3 rounded-full text-[12px] text-center border" :class="createMsg.includes('Created')||createMsg.includes('Success')?'bg-green-500/10 border-green-500/20 text-green-400':'bg-red-500/10 border-red-500/20 text-red-400'" x-text="createMsg"></p>
+        </div>
+      </div>
+      <div class="mt-6 grid grid-cols-1 gap-3">
+        <template x-for="s in staffList" :key="s.id">
+          <div class="glass rounded-[20px] p-5 flex items-center justify-between hover:border-[#222] hover:bg-[#101010]/80 transition-all group">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 bg-[#0f0f0f] border border-[#222] rounded-full flex items-center justify-center font-black text-sm group-hover:border-amber-500/20 transition" x-text="s.name[0]"></div>
+              <div><div class="flex items-center gap-2"><p class="font-bold text-[14px]" x-text="s.name"></p><span class="text-[9px] px-2 py-0.5 rounded-full font-black" :class="s.isBanned?'bg-red-500/10 text-red-400 border border-red-500/20':'bg-green-500/10 text-green-400 border border-green-500/20'" x-text="s.isBanned?'BANNED':'ACTIVE'"></span></div><p class="text-[11px] text-zinc-500" x-text="s.email+' • '+s.staffRole"></p><p class="text-[10px] text-zinc-600 mt-0.5" x-text="'Last: '+(s.lastAttendance||'Never')"></p></div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button @click="toggleBan(s)" class="px-4 py-2 rounded-full text-[11px] font-bold border transition" :class="s.isBanned?'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20':'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'" x-text="s.isBanned?'Unban':'Ban'"></button>
+              <button @click="deleteStaff(s)" class="w-9 h-9 rounded-full bg-[#111] border border-[#222] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400 flex items-center justify-center transition"><i class="fa-solid fa-trash text-[11px]"></i></button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div x-show="tab==='tasks'" x-cloak>
+      <div class="flex justify-between items-center"><h1 class="text-[26px] font-black">Task Command</h1><button @click="showTaskCreate=true" class="px-6 py-3 bg-white text-black rounded-full text-[12px] font-black hover:bg-zinc-100 transition">+ Assign Task</button></div>
+      <div x-show="showTaskCreate" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-xl z-[60] flex items-center justify-center p-6">
+        <div class="glass-strong gold-glow rounded-[28px] p-7 w-full max-w-lg"><h3 class="font-black text-[16px]">Assign Mission</h3><div class="space-y-4 mt-6"><input x-model="newTask.title" placeholder="Task Title" class="w-full bg-black border border-[#222] rounded-full py-3.5 px-5 text-[13px] outline-none focus:border-white/20"><textarea x-model="newTask.desc" placeholder="Description..." class="w-full bg-black border border-[#222] rounded-[20px] py-3.5 px-5 text-[13px] h-28 outline-none focus:border-white/20"></textarea><div class="grid grid-cols-2 gap-3"><select x-model="newTask.assignTo" class="w-full bg-black border border-[#222] rounded-full py-3.5 px-5 text-[13px]"><option value="">Select Staff</option><template x-for="s in staffList"><option :value="s.id" x-text="s.name"></option></template><option value="all">All Staff</option></select><select x-model="newTask.priority" class="w-full bg-black border border-[#222] rounded-full py-3.5 px-5 text-[13px]"><option>High</option><option>Medium</option><option>Low</option></select></div><input x-model="newTask.dueDate" type="date" class="w-full bg-black border border-[#222] rounded-full py-3.5 px-5 text-[13px]"></div><div class="flex gap-3 mt-7"><button @click="showTaskCreate=false" class="flex-1 py-3.5 bg-[#1a1a1a] rounded-full text-[12px]">Cancel</button><button @click="createTask()" class="flex-1 py-3.5 bg-amber-400 text-black rounded-full text-[12px] font-black">Assign</button></div></div>
+      </div>
+      <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <template x-for="t in tasks">
+          <div class="glass rounded-[22px] p-6 hover:border-[#222] transition-all group">
+            <div class="flex justify-between items-start"><p class="font-bold text-[14px] pr-4" x-text="t.title"></p><span class="text-[9px] px-2 py-1 rounded-full font-black shrink-0" :class="t.priority==='High'?'bg-red-500/10 text-red-400 border border-red-500/20':t.priority==='Medium'?'bg-amber-500/10 text-amber-400 border border-amber-500/20':'bg-zinc-800 text-zinc-400'" x-text="t.priority"></span></div>
+            <p class="text-[12px] text-zinc-500 mt-3 leading-relaxed" x-text="t.desc"></p>
+            <div class="flex items-center gap-2 mt-4"><div class="w-6 h-6 rounded-full bg-[#111] border border-[#222] flex items-center justify-center text-[9px] font-bold" x-text="(t.assignToName||'A')[0]"></div><p class="text-[11px] text-zinc-400" x-text="t.assignToName"></p><span class="ml-auto text-[10px] text-zinc-600" x-text="t.dueDate||''"></span></div>
+            <div class="flex gap-2 mt-4"><button @click="deleteTask(t.id)" class="px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full text-[11px] font-bold hover:bg-red-500/20 transition">Delete</button></div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div x-show="tab==='attendance'" x-cloak>
+      <h1 class="text-[26px] font-black">Attendance Matrix</h1>
+      <p class="text-[12px] text-zinc-500 mt-1">Real-time presence • Auto-tracked via login</p>
+      <div class="mt-6 grid grid-cols-1 gap-2.5">
+        <template x-for="s in staffList">
+          <div class="glass rounded-2xl p-4 flex justify-between items-center hover:border-[#222] transition">
+            <div class="flex items-center gap-3"><div class="w-10 h-10 bg-[#0f0f0f] border border-[#222] rounded-full flex items-center justify-center font-bold text-[11px]" x-text="s.name[0]"></div><div><p class="font-bold text-[13px]" x-text="s.name"></p><p class="text-[11px] text-zinc-500" x-text="s.staffRole+' • '+(s.lastAttendance||'Never')"></p></div></div>
+            <div class="flex items-center gap-3"><span class="w-2 h-2 rounded-full" :class="s.todayPresent?'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]':'bg-zinc-700'"></span><span class="text-[11px] px-3 py-1 rounded-full font-bold border" :class="s.todayPresent?'bg-green-500/10 text-green-400 border-green-500/20':'bg-zinc-900 text-zinc-600 border-[#222]'" x-text="s.todayPresent?'Present':'Absent'"></span></div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div x-show="tab==='announce'" x-cloak>
+      <h1 class="text-[26px] font-black">Broadcast Command</h1>
+      <p class="text-[12px] text-zinc-500 mt-1">Send secure announcements to all staff • Encrypted</p>
+      <div class="mt-6 glass rounded-[24px] p-6 gold-glow-hover transition-all">
+        <div class="flex items-center gap-2 mb-4"><div class="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400"><i class="fa-solid fa-bullhorn text-xs"></i></div><p class="font-bold text-sm">New Transmission</p></div>
+        <input x-model="announce.title" placeholder="Title: Greetings" class="w-full bg-black border border-[#222] rounded-full py-3.5 px-5 text-[13px] outline-none focus:border-amber-500/30 transition">
+        <textarea x-model="announce.msg" placeholder="Message: Hello lovely Staff Team!" class="w-full mt-3 bg-black border border-[#222] rounded-[20px] py-3.5 px-5 text-[13px] h-28 outline-none focus:border-amber-500/30 transition"></textarea>
+        <button @click="sendAnnouncement()" class="mt-4 px-6 py-3 bg-gradient-to-r from-amber-300 to-orange-500 text-black rounded-full text-[12px] font-black shadow-[0_0_20px_rgba(251,191,36,0.2)] hover:shadow-[0_0_30px_rgba(251,191,36,0.3)] transition">Broadcast to All Staff <i class="fa-solid fa-paper-plane ml-2"></i></button>
+      </div>
+      <div x-show="editingAnnounce" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-xl z-[70] flex items-center justify-center p-6">
+        <div class="glass-strong gold-glow rounded-[28px] p-7 w-full max-w-lg">
+          <h3 class="font-black text-[16px]"><i class="fa-solid fa-pen-to-square text-amber-400 mr-2"></i>Edit Transmission</h3>
+          <div class="space-y-4 mt-6"><input x-model="editForm.title" class="w-full bg-black border border-[#222] rounded-full py-3.5 px-5 text-[13px]"><textarea x-model="editForm.msg" class="w-full bg-black border border-[#222] rounded-[20px] py-3.5 px-5 text-[13px] h-28"></textarea></div>
+          <div class="flex gap-3 mt-7"><button @click="editingAnnounce=false" class="flex-1 py-3.5 bg-[#1a1a1a] border border-[#222] rounded-full text-[12px] font-bold">Cancel</button><button @click="updateAnnouncement()" class="flex-1 py-3.5 bg-amber-400 text-black rounded-full text-[12px] font-black">Update Broadcast</button></div>
+        </div>
+      </div>
+      <div class="mt-6 space-y-3">
+        <template x-for="a in announcements" :key="a.id">
+          <div class="glass rounded-[22px] p-5 flex justify-between items-start group hover:border-amber-500/20 transition-all">
+            <div class="flex-1"><div class="flex items-center gap-2"><p class="font-bold text-[14px]" x-text="a.title"></p><span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span></div><p class="text-[12px] text-zinc-400 mt-2 leading-relaxed" x-text="a.msg"></p><p class="text-[10px] text-zinc-600 mt-3 font-mono"><span x-text="a.time"></span> • <span x-text="a.by"></span></p></div>
+            <div class="flex items-center gap-2 ml-4 opacity-60 group-hover:opacity-100 transition"><button @click="startEdit(a)" class="w-9 h-9 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white hover:text-black flex items-center justify-center transition"><i class="fa-solid fa-pen text-[11px]"></i></button><button @click="deleteAnnouncement(a.id)" class="w-9 h-9 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 flex items-center justify-center transition"><i class="fa-solid fa-trash text-[11px]"></i></button></div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div x-show="tab==='security'" x-cloak>
+      <h1 class="text-[26px] font-black">Security & Audit Log</h1>
+      <p class="text-[12px] text-zinc-500 mt-1">All founder actions are immutable and tracked</p>
+      <div class="mt-6 glass rounded-[24px] p-6">
+        <div class="flex items-center gap-2 mb-5"><div class="w-8 h-8 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400"><i class="fa-solid fa-shield-halved text-xs"></i></div><p class="font-bold text-sm">Live Audit Trail</p><span class="ml-auto text-[10px] px-2 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-green-400 font-bold">LIVE FEED</span></div>
+        <div class="space-y-2 max-h-[480px] overflow-y-auto pr-2">
+          <template x-for="l in logs">
+            <div class="flex items-center gap-3 p-3.5 bg-black/60 border border-[#151515] rounded-2xl hover:border-[#222] transition">
+              <div class="w-8 h-8 rounded-full bg-[#111] border border-[#1a1a1a] flex items-center justify-center shrink-0"><i :class="l.icon+' text-[11px] text-amber-400'"></i></div>
+              <div class="flex-1 min-w-0"><p class="text-[12px] text-zinc-300 truncate" x-text="l.msg"></p><p class="text-[10px] text-zinc-600 font-mono" x-text="l.time+' • '+(l.ip||'')"></p></div>
+            </div>
+          </template>
+          <div x-show="logs.length===0" class="p-8 text-center text-zinc-600 text-[12px]">No logs yet - actions will appear here</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function founder(){
+ return{
+  checking:true, isFounder:false, tab:'overview', email:'', password:'', alertMsg:'', staffList:[], tasks:[], announcements:[], logs:[], allFilesCount:0, attendanceToday:0, showCreate:false, showTaskCreate:false, createMsg:'', creating:false, ip:'...', founderData:{},
+  newStaff:{name:'',email:'',password:'',role:'Support Staff'},
+  newTask:{title:'',desc:'',assignTo:'',priority:'Medium',dueDate:''},
+  announce:{title:'',msg:''},
+  editingAnnounce:false, editForm:{id:'',title:'',msg:''},
+  tabs:[{id:'overview',label:'Overview',icon:'fa-solid fa-table-columns'},{id:'staff',label:'Staff Matrix',icon:'fa-solid fa-users-gear',count:0},{id:'tasks',label:'Task Command',icon:'fa-solid fa-list-check',count:0},{id:'attendance',label:'Attendance',icon:'fa-solid fa-clipboard-check'},{id:'announce',label:'Broadcast',icon:'fa-solid fa-bullhorn'},{id:'security',label:'Security Center',icon:'fa-solid fa-shield-halved'}],
+  async init(){
+    try{ const r=await fetch('https://api.ipify.org?format=json'); const j=await r.json(); this.ip=j.ip; }catch{ this.ip='Hidden'; }
+    const i=setInterval(()=>{
+      if(window.app){
+        clearInterval(i);
+        const {auth, onAuthStateChanged, doc, getDoc, db, collection, onSnapshot, query, orderBy}=window.app;
+        onAuthStateChanged(auth, async u=>{
+          if(u){
+            const snap=await getDoc(doc(db,"users",u.uid));
+            if(!snap.exists()||(!snap.data().isFounder&&!snap.data().isAdmin)){ this.checking=false; await window.app.signOut(window.app.auth); return; }
+            this.isFounder=true; this.founderData=snap.data();
+            onSnapshot(collection(db,"users"), s=>{ const all=s.docs.map(d=>({id:d.id,...d.data()})); this.staffList=all.filter(u=>u.isStaff&&!u.isFounder); const today=new Date().toDateString(); this.attendanceToday=this.staffList.filter(x=>x.lastAttendance&&x.lastAttendance.includes(today)).length; this.staffList.forEach(x=>{ x.todayPresent=x.lastAttendance&&x.lastAttendance.includes(today); }); this.tabs[1].count=this.staffList.length; });
+            onSnapshot(query(collection(db,"staff_tasks"), orderBy("createdAt","desc")), s=>{ this.tasks=s.docs.map(d=>({id:d.id,...d.data()})); this.tabs[2].count=this.tasks.length; let c=0; this.tasks.forEach(t=>c+=(t.files||[]).length); this.allFilesCount=c; });
+            onSnapshot(query(collection(db,"announcements"), orderBy("createdAt","desc")), s=>{ this.announcements=s.docs.map(d=>({id:d.id,...d.data()})); });
+            onSnapshot(query(collection(db,"founder_logs"), orderBy("createdAt","desc")), s=>{ this.logs=s.docs.map(d=>({id:d.id,...d.data()})); });
+          }
+          this.checking=false;
+        });
+      }
+    },100);
+  },
+  async logAction(msg,icon='fa-solid fa-bolt'){ try{ const {collection, addDoc, db}=window.app; await addDoc(collection(db,"founder_logs"),{msg:msg, icon:icon, time:new Date().toLocaleString(), createdAt:new Date().toISOString(), ip:this.ip}); }catch(e){} },
+  async login(){ const {auth, signInWithEmailAndPassword}=window.app; try{ await signInWithEmailAndPassword(auth, this.email.trim().toLowerCase(), this.password); }catch(e){ this.alertMsg=e.message; } },
+  goToHome(){
+    localStorage.setItem('umbrella_is_logged_in','true');
+    localStorage.setItem('umbrella_ban_cache', JSON.stringify({banned:false}));
+    window.location.href = 'homepage.html';
+  },
+  async createStaff(){ const {secAuth, createUserWithEmailAndPassword, doc, setDoc, db, collection, query, where, getDocs}=window.app; const emailLow=this.newStaff.email.trim().toLowerCase(); if(!emailLow.endsWith('@umbrellasocial.com')){ this.createMsg='Only @umbrellasocial.com allowed'; return; } if(!this.newStaff.name||!emailLow||!this.newStaff.password||this.newStaff.password.length<6){ this.createMsg='Fill all fields, password min 6'; return; } this.creating=true; try{ const cred=await createUserWithEmailAndPassword(secAuth, emailLow, this.newStaff.password); let base=this.newStaff.name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'').slice(0,12)||'staff'; let username=base,c=1; while(true){ const q=query(collection(db,"users"), where("username","==",username)); const s=await getDocs(q); if(s.empty) break; username=`${base}_${c++}`; } await setDoc(doc(db,"users",cred.user.uid),{name:this.newStaff.name.trim(), email:emailLow, username, handle:username, bio:this.newStaff.role+' @ UMBRELLAsocial', isStaff:true, staffRole:this.newStaff.role, isVerified:true, isBanned:false, isFounder:false, isAdmin:false, createdAt:new Date().toISOString(), createdBy:this.founderData.email}); this.createMsg='Staff Created Successfully!'; await this.logAction(`Created staff ${this.newStaff.name}`,'fa-solid fa-user-plus'); this.newStaff={name:'',email:'',password:'',role:'Support Staff'}; setTimeout(()=>{ this.showCreate=false; this.createMsg=''; },1500); }catch(e){ this.createMsg=e.message; } this.creating=false; },
+  async createTask(){ const {collection, addDoc, db}=window.app; if(!this.newTask.title||!this.newTask.assignTo){ alert('Fill title and staff'); return; } let name='All Staff'; if(this.newTask.assignTo!=='all'){ const s=this.staffList.find(x=>x.id===this.newTask.assignTo); name=s?s.name:'Unknown'; } await addDoc(collection(db,"staff_tasks"),{title:this.newTask.title, desc:this.newTask.desc, assignTo:this.newTask.assignTo, assignToName:name, priority:this.newTask.priority, dueDate:this.newTask.dueDate, status:'Pending', files:[], comments:[], createdAt:new Date().toISOString(), createdBy:'Founder'}); this.newTask={title:'',desc:'',assignTo:'',priority:'Medium',dueDate:''}; this.showTaskCreate=false; await this.logAction(`Assigned task: ${name}`,'fa-solid fa-list-check'); },
+  async sendAnnouncement(){ try{ if(!this.announce.title ||!this.announce.msg){ alert('Fill Title and Message'); return; } const {collection, addDoc, db}=window.app; await addDoc(collection(db,"announcements"),{title:this.announce.title, msg:this.announce.msg, time:new Date().toLocaleString(), createdAt:new Date().toISOString(), by:this.founderData.name||'Founder'}); this.announce={title:'',msg:''}; await this.logAction(`Broadcast: ${this.announce.title}`,'fa-solid fa-bullhorn'); }catch(e){ alert('Error: '+e.message); } },
+  startEdit(a){ this.editForm={id:a.id, title:a.title, msg:a.msg}; this.editingAnnounce=true; },
+  async updateAnnouncement(){ try{ const {doc, updateDoc, db}=window.app; await updateDoc(doc(db,"announcements",this.editForm.id),{title:this.editForm.title, msg:this.editForm.msg, time:new Date().toLocaleString()+' (Edited)', editedAt:new Date().toISOString()}); this.editingAnnounce=false; await this.logAction(`Edited announcement`,'fa-solid fa-pen'); }catch(e){ alert('Update Error: '+e.message); } },
+  async deleteAnnouncement(id){ if(!confirm('Delete this announcement?')) return; const {doc, deleteDoc, db}=window.app; await deleteDoc(doc(db,"announcements",id)); await this.logAction(`Deleted announcement`,'fa-solid fa-trash'); },
+  async deleteTask(id){ if(!confirm('Delete task?')) return; const {doc, deleteDoc, db}=window.app; await deleteDoc(doc(db,"staff_tasks",id)); },
+  async toggleBan(s){ const {doc, updateDoc, db}=window.app; await updateDoc(doc(db,"users",s.id),{isBanned:!s.isBanned}); await this.logAction(`${s.isBanned?'Unbanned':'Banned'} ${s.name}`,'fa-solid fa-ban'); },
+  async deleteStaff(s){ if(!confirm('Delete '+s.name+'?')) return; const {doc, deleteDoc, db}=window.app; await deleteDoc(doc(db,"users",s.id)); await this.logAction(`Deleted staff ${s.name}`,'fa-solid fa-user-xmark'); },
+  async logout(){ const {auth, signOut}=window.app; await signOut(auth); location.reload(); }
+ }
+}
+</script>
+</body>
+</html>

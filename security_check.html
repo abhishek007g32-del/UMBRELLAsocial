@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Verification - UMBRELLA</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyC4DGER69Xfc3P_xcQR5RtXH3oBuLP9rKY",authDomain:"umbrellasocial.firebaseapp.com",projectId:"umbrellasocial",storageBucket:"umbrellasocial.firebasestorage.app",messagingSenderId:"126237795119",appId:"1:126237795119:web:db54ac49f178e0136bf7da"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore(); firebase.auth().signInAnonymously().catch(()=>{});
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+body{font-family:Inter,sans-serif;background:#000}
+.mesh{background:radial-gradient(at 20% 20%, rgba(29,155,240,0.25) 0px, transparent 50%), radial-gradient(at 80% 80%, rgba(245,158,11,0.15) 0px, transparent 50%)}
+</style>
+</head>
+<body class="bg-black text-zinc-200 min-h-screen">
+<div id="successOverlay" class="hidden fixed inset-0 z-[999] bg-black flex items-center justify-center p-6 text-center overflow-y-auto">
+  <div class="w-full max-w-[440px] py-10">
+    <div class="w-28 h-28 rounded-full bg-green-500 flex items-center justify-center mx-auto text-black text-[50px] shadow-[0_0_80px_rgba(34,197,94,0.5)]"><i class="fa-solid fa-check"></i></div>
+    <h1 class="text-[36px] font-black mt-6 leading-[0.9]">Application<br><span class="text-green-400">Submitted!</span></h1>
+    <p class="text-[14px] text-zinc-400 mt-4">Your Aadhar + 10 sec video successfully submitted.</p>
+    <div class="mt-8 p-5 rounded-[24px] bg-[#0e0e10] border border-[#1e1e1e] text-left space-y-2">
+      <p class="text-[11px] text-zinc-400 flex justify-between"><span>Email</span><span id="successEmail" class="text-white font-bold">-</span></p>
+      <p class="text-[11px] text-zinc-400 flex justify-between"><span>Time</span><span id="successTime" class="text-white">-</span></p>
+      <p class="text-[11px] text-zinc-400 flex justify-between"><span>Status</span><span class="text-amber-300 font-bold">PENDING FOUNDER REVIEW</span></p>
+    </div>
+    <div class="mt-6 p-4 rounded-[20px] bg-amber-500/5 border border-amber-500/10 text-left flex gap-3">
+      <div class="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0"><i class="fa-solid fa-circle-info"></i></div>
+      <div><p class="text-[11px] font-bold text-amber-300">Important Note</p><p class="text-[11px] text-zinc-400 mt-1 leading-relaxed">To check your submission status, you can <b class="text-white">login using your current credentials</b>. You will NOT get access to the account, but it will take you to status page to check if approved or rejected.</p></div>
+    </div>
+    <button onclick="window.location.href='application_status.html?email='+encodeURIComponent(email)" class="mt-8 w-full bg-white text-black font-black py-4 rounded-full text-[14px]">Go to Status Page Now</button>
+    <p class="text-[10px] text-zinc-600 mt-4">Auto redirecting to status page in 5 sec...</p>
+  </div>
+</div>
+<div id="mainContainer" class="w-full min-h-screen md:min-h-[820px] md:max-w-[1120px] md:mx-auto md:my-6 md:rounded-[36px] md:border border-[#1e1e1e] overflow-hidden grid grid-cols-1 md:grid-cols-12 bg-black">
+  <div class="hidden md:flex md:col-span-5 relative flex-col justify-between p-10 bg-[#0a0a0a] border-r border-[#1a1a1a] mesh"><div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div><div class="relative z-10"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black"><i class="fa-solid fa-umbrella"></i></div><p class="font-black tracking-widest text-[12px]">UMBRELLAsocial</p></div></div><div class="relative z-10"><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] font-bold tracking-widest text-red-400 uppercase">Security Lock</div><h1 class="text-[40px] font-black leading-[0.9] mt-5">Identity<br><span class="text-red-400">Verification.</span></h1><p class="text-[13px] text-zinc-500 mt-4">Founder manual verification.</p></div><div class="relative z-10 text-[11px] text-zinc-600">© 2026 UMBRELLAsocial</div></div>
+  <div class="col-span-1 md:col-span-7 bg-black p-6 md:p-10 flex flex-col">
+    <div id="state-form" class="max-w-[440px] w-full mx-auto flex-1 flex flex-col justify-center">
+      <div class="text-center md:text-left mb-8"><div class="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto md:mx-0 text-red-400 text-[22px]"><i class="fa-solid fa-lock"></i></div><h2 class="text-[28px] font-black mt-4 leading-[0.9]">Verify Identity</h2><p class="text-[12px] text-zinc-500 mt-3">For <span id="emailShow" class="text-white font-bold"></span></p></div>
+      <div class="space-y-4">
+        <div><label class="text-[10px] font-black tracking-[0.2em] text-zinc-500">AADHAR NUMBER *</label><div class="relative mt-2"><i class="fa-solid fa-id-card absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600"></i><input id="aadharNum" maxlength="12" inputmode="numeric" placeholder="12 digit number" class="w-full bg-[#0e0e10] border border-[#1e1e1e] rounded-full py-4 pl-11 pr-4 text-[14px] outline-none"></div></div>
+        <div><label class="text-[10px] font-black tracking-[0.2em] text-zinc-500">AADHAR PHOTO *</label><div class="mt-2 relative"><input type="file" id="aadharFile" accept="image/*" class="hidden"><div id="aadharBox" onclick="document.getElementById('aadharFile').click()" class="w-full bg-[#0e0e10] border border-dashed border-[#222] rounded-[20px] p-4 flex items-center gap-3 cursor-pointer"><div class="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center"><i class="fa-solid fa-upload text-[12px]"></i></div><div><p class="text-[12px] font-bold">Upload Aadhar</p><p class="text-[10px] text-zinc-500">Auto compressed</p></div></div><div id="aadharPreviewWrap" class="hidden mt-3 relative rounded-[20px] overflow-hidden border border-white/10"><img id="aadharPreview" class="w-full max-h-[220px] object-cover"><button type="button" onclick="removeAadhar()" class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/80 border border-white/20 flex items-center justify-center"><i class="fa-solid fa-xmark text-[12px]"></i></button></div><div id="aadharActions" class="hidden mt-3 grid grid-cols-2 gap-2"><button type="button" onclick="retakeAadhar()" class="w-full py-3 rounded-full bg-[#1a1a1a] border border-[#222] text-white font-bold text-[11px]">Retake</button><button type="button" onclick="removeAadhar()" class="w-full py-3 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-bold text-[11px]">Remove</button></div></div>
+        <div class="rounded-[24px] bg-[#0e0e10] border border-[#1e1e1e] p-4">
+          <p class="text-[10px] font-black tracking-[0.2em] text-zinc-500">SELFIE VIDEO 10 SEC *</p>
+          <input type="file" id="videoFile" accept="video/*" class="hidden">
+          <div id="videoUploadBox" onclick="document.getElementById('videoFile').click()" class="mt-3 w-full bg-black border border-dashed border-[#333] rounded-[20px] p-6 flex flex-col items-center justify-center gap-2 cursor-pointer"><div class="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center"><i class="fa-solid fa-cloud-arrow-up"></i></div><p class="text-[12px] font-bold">Upload 10 sec Selfie Video</p><p class="text-[10px] text-zinc-500">Any size - auto compress</p></div>
+          <div id="compressProgress" class="hidden mt-3 p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10"><div class="flex justify-between"><p class="text-[11px] font-bold text-amber-300">Compressing...</p><span id="compressPercent" class="text-[10px] text-amber-400">0%</span></div><div class="mt-2 h-1.5 bg-[#222] rounded-full overflow-hidden"><div id="compressBar" class="h-full bg-amber-500" style="width:0%"></div></div></div>
+          <video id="videoPreview" controls class="hidden mt-3 w-full h-[240px] rounded-[20px] bg-black border border-white/10 object-cover"></video>
+          <div id="videoActions" class="hidden mt-3 grid grid-cols-2 gap-2"><button type="button" onclick="document.getElementById('videoFile').click()" class="w-full py-2.5 rounded-full bg-[#1a1a1a] border border-[#222] text-white font-bold text-[11px]">Change</button><button type="button" onclick="removeVideo()" class="w-full py-2.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-bold text-[11px]">Remove</button></div>
+        </div>
+        <button id="submitBtn" type="button" onclick="submitVerification()" disabled class="w-full bg-zinc-800 text-zinc-500 font-black py-4 rounded-full text-[14px] disabled:opacity-40">Submit For Founder Approval</button>
+        <p id="sizeInfo" class="hidden text-[10px] text-center text-zinc-500"></p>
+        <p id="errorMsg" class="hidden text-[11px] text-center p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300"></p>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const email=(new URLSearchParams(location.search).get('email')||'').toLowerCase();
+document.getElementById('emailShow').innerText=email||'No email';
+let aadharBase64='',faceVideoBase64='',userDocId=null;
+function removeAadhar(){ aadharBase64=''; document.getElementById('aadharPreview').src=''; document.getElementById('aadharPreviewWrap').classList.add('hidden'); document.getElementById('aadharActions').classList.add('hidden'); document.getElementById('aadharBox').classList.remove('hidden'); document.getElementById('aadharFile').value=''; updateSize(); checkReady(); }
+function retakeAadhar(){ removeAadhar(); setTimeout(()=>document.getElementById('aadharFile').click(),100); }
+function removeVideo(){ faceVideoBase64=''; document.getElementById('videoPreview').src=''; document.getElementById('videoPreview').classList.add('hidden'); document.getElementById('videoUploadBox').classList.remove('hidden'); document.getElementById('videoActions').classList.add('hidden'); document.getElementById('videoFile').value=''; document.getElementById('compressProgress').classList.add('hidden'); updateSize(); checkReady(); }
+function updateSize(){
+  const a=aadharBase64?Math.round((aadharBase64.length*0.75)/1024):0;
+  const v=faceVideoBase64?Math.round((faceVideoBase64.length*0.75)/1024):0;
+  if(a+v>0){ document.getElementById('sizeInfo').classList.remove('hidden'); document.getElementById('sizeInfo').innerText=`Total: ${a+v}KB / 900KB`; }
+}
+async function initCheck(){
+  if(!email) return;
+  try{
+    const verifQ=await db.collection('securityVerifications').where('email','==',email).orderBy('createdAt','desc').limit(1).get();
+    if(!verifQ.empty && verifQ.docs[0].data().status==='pending_founder_approval'){
+      location.replace('application_status.html?email='+encodeURIComponent(email));
+      return;
+    }
+    const userQ=await db.collection('users').where('email','==',email).limit(1).get();
+    if(!userQ.empty) userDocId=userQ.docs[0].id;
+  }catch(e){ console.log(e); }
+}
+document.getElementById('aadharFile').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=ev=>{
+    const img=new Image(); img.onload=()=>{
+      const c=document.createElement('canvas'); let w=img.width,h=img.height; const MAX=500;
+      if(w>MAX||h>MAX){ if(w>h){h*=MAX/w; w=MAX;} else{w*=MAX/h; h=MAX;} }
+      c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h);
+      aadharBase64=c.toDataURL('image/jpeg',0.5);
+      document.getElementById('aadharPreview').src=aadharBase64;
+      document.getElementById('aadharPreviewWrap').classList.remove('hidden');
+      document.getElementById('aadharActions').classList.remove('hidden');
+      document.getElementById('aadharBox').classList.add('hidden');
+      updateSize(); checkReady();
+    }; img.src=ev.target.result;
+  }; r.readAsDataURL(f);
+});
+document.getElementById('videoFile').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  document.getElementById('compressProgress').classList.remove('hidden');
+  try{
+    const blob=await compressVideo(f, p=>{ document.getElementById('compressBar').style.width=p+'%'; document.getElementById('compressPercent').innerText=p+'%'; });
+    const url=URL.createObjectURL(blob);
+    const v=document.getElementById('videoPreview');
+    v.src=url; v.classList.remove('hidden'); document.getElementById('videoUploadBox').classList.add('hidden'); document.getElementById('videoActions').classList.remove('hidden');
+    v.onloadedmetadata=()=>{
+      document.getElementById('compressProgress').classList.add('hidden');
+      const reader=new FileReader(); reader.onloadend=()=>{ faceVideoBase64=reader.result; updateSize(); checkReady(); }; reader.readAsDataURL(blob);
+    };
+  }catch(err){ alert('Compression failed: '+err.message); removeVideo(); }
+});
+function compressVideo(file, onProgress){
+  return new Promise((resolve,reject)=>{
+    const video=document.createElement('video'); video.muted=true; video.playsInline=true;
+    video.src=URL.createObjectURL(file);
+    video.onloadedmetadata=async ()=>{
+      const duration=Math.min(video.duration,10);
+      const canvas=document.createElement('canvas'); const ctx=canvas.getContext('2d');
+      canvas.width=480; canvas.height=video.videoHeight*(480/video.videoWidth);
+      const stream=canvas.captureStream(15); const chunks=[];
+      let mime='video/webm;codecs=vp9'; if(!MediaRecorder.isTypeSupported(mime)) mime='video/webm';
+      const recorder=new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 250000 });
+      recorder.ondataavailable=e=>{ if(e.data.size>0) chunks.push(e.data); };
+      recorder.onstop=()=>{ resolve(new Blob(chunks,{type:'video/webm'})); };
+      video.currentTime=0; await video.play().catch(()=>{}); recorder.start();
+      function draw(){
+        if(video.currentTime>=duration || video.currentTime>=video.duration){ recorder.stop(); video.pause(); return; }
+        ctx.drawImage(video,0,0,canvas.width,canvas.height);
+        onProgress(Math.round((video.currentTime/duration)*100));
+        requestAnimationFrame(draw);
+      }
+      draw();
+    };
+    video.onerror=()=>reject(new Error('video load failed'));
+  });
+}
+function checkReady(){
+  const num=document.getElementById('aadharNum').value.trim();
+  const ok=num.length===12 && aadharBase64 && faceVideoBase64;
+  const btn=document.getElementById('submitBtn'); btn.disabled=!ok;
+  btn.className=ok?'w-full bg-white text-black font-black py-4 rounded-full text-[14px]':'w-full bg-zinc-800 text-zinc-500 font-black py-4 rounded-full text-[14px] disabled:opacity-40';
+}
+document.getElementById('aadharNum').addEventListener('input',checkReady);
+async function submitVerification(){
+  const num=document.getElementById('aadharNum').value.trim();
+  if(num.length!==12){ document.getElementById('errorMsg').classList.remove('hidden'); document.getElementById('errorMsg').innerText='Enter 12 digit Aadhar'; return; }
+  if(!aadharBase64 ||!faceVideoBase64){ document.getElementById('errorMsg').classList.remove('hidden'); document.getElementById('errorMsg').innerText='Upload Aadhar and Video both'; return; }
+  const btn=document.getElementById('submitBtn'); btn.innerText='Submitting...'; btn.disabled=true;
+  document.getElementById('errorMsg').classList.add('hidden');
+  try{
+    if(userDocId){ await db.collection('users').doc(userDocId).update({ isSecurityLocked: true }); }
+    await db.collection('securityVerifications').add({ email: email, aadharFull: num, aadharLast4: num.slice(-4), aadharImage: aadharBase64, faceVideo: faceVideoBase64, status:'pending_founder_approval', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    localStorage.setItem('umbrella_application_submitted_'+email,'true');
+    localStorage.setItem('umbrella_permanent_lock_'+email,'true');
+    document.getElementById('successEmail').innerText=email;
+    document.getElementById('successTime').innerText=new Date().toLocaleString();
+    document.getElementById('successOverlay').classList.remove('hidden');
+    document.getElementById('mainContainer').classList.add('hidden');
+    setTimeout(()=>{ window.location.href='application_status.html?email='+encodeURIComponent(email); },5000);
+  }catch(e){
+    console.error(e);
+    document.getElementById('errorMsg').classList.remove('hidden');
+    document.getElementById('errorMsg').innerText='Error: '+e.message;
+    btn.innerText='Submit For Founder Approval'; btn.disabled=false;
+  }
+}
+initCheck();
+</script>
+</body>
+</html>

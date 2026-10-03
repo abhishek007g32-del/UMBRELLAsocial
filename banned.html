@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account Status / UMBRELLAsocial</title>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyC4DGER69Xfc3P_xcQR5RtXH3oBuLP9rKY",authDomain:"umbrellasocial.firebaseapp.com",projectId:"umbrellasocial",storageBucket:"umbrellasocial.firebasestorage.app",messagingSenderId:"126237795119",appId:"1:126237795119:web:db54ac49f178e0136bf7da"};
+if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore(), auth=firebase.auth();
+
+auth.onAuthStateChanged(async u=>{
+  if(!u){ location.href='auth.html'; return; }
+  const doc = await db.collection('users').doc(u.uid).get();
+  if(!doc.exists){ location.href='index.html'; return; }
+  const data = doc.data();
+  if(!data.isBanned){
+    location.href='index.html'; return;
+  }
+
+  // FIXED LOGIC - Distinguish Safety Hold vs Permanent
+  const banReasonLower = (data.banReason||'').toLowerCase();
+  const bannedBy = (data.bannedBy||'');
+  const isSafetyHold = banReasonLower.includes('safety hold') || bannedBy === 'WOMEN_HELPLINE_HOLD' || data.banType === 'TEMPORARY_HOLD' || data.status === 'under_review';
+
+  const isGuilty = data.womenSafetyStatus === 'banned_guilty' || bannedBy.includes('TRUE_VERDICT');
+  const isFalseReport = data.womenSafetyStatus === 'banned_false_report' || bannedBy.includes('FALSE_VERDICT');
+  const isPermanent =!isSafetyHold && (data.banType === 'PERMANENT' || data.status === 'permanently_banned' || bannedBy.includes('TRUE_VERDICT') || bannedBy.includes('FALSE_VERDICT'));
+
+  document.getElementById('reasonText').innerText = data.banReason || 'Violating community guidelines';
+  document.getElementById('bannedAt').innerText = data.bannedAt?.toDate?.()?.toLocaleString?.() || new Date().toLocaleString();
+
+  if(isPermanent){
+    // PERMANENT BAN - After TRUE/FALSE verdict
+    document.getElementById('pageTitle').innerText = isGuilty? 'Account Permanently Banned - Found Guilty' : isFalseReport? 'Account Permanently Banned - False Report' : 'Account Permanently Banned';
+    document.getElementById('pageSub').innerText = isGuilty? 'This account has been permanently banned after being found guilty in Women Safety investigation.' : isFalseReport? 'This account has been permanently banned for false reporting / misuse of Women Helpline. Zero tolerance.' : 'This account has been permanently banned.';
+    document.getElementById('restoreLabel').innerText = 'BAN TYPE';
+    document.getElementById('restoreText').innerText = 'PERMANENT BAN - Will NOT be restored';
+    document.getElementById('restoreText').className = 'text-[12px] font-black text-red-400 mt-1 leading-[14px]';
+    document.getElementById('statusTitle').innerText = 'Permanently Banned';
+    document.getElementById('statusTitle').className = 'text-[18px] font-black tracking-widest text-red-400 mt-3';
+    document.getElementById('statusSub').innerText = isGuilty? 'You have been found guilty of sexual harassment / abuse. Permanent ban, cannot be restored.' : isFalseReport? 'You misused Women Helpline by false reporting / not submitting POV on time. Permanent ban as per policy.' : 'This decision is final.';
+    document.getElementById('statusBox').className = 'mt-6 p-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-center';
+    document.getElementById('iconBox').innerHTML = '<i class="fa-solid fa-ban text-2xl text-red-400"></i>';
+    document.getElementById('iconBox').className = 'w-16 h-16 rounded-full bg-red-500/15 border border-red-500/20 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(239,68,68,0.2)]';
+    document.getElementById('requestBtn').innerHTML = '<i class="fa-solid fa-ban mr-2"></i> Permanent Ban - No Review';
+    document.getElementById('requestBtn').disabled = true;
+    document.getElementById('requestBtn').className = 'flex-1 py-3.5 rounded-full bg-[#222] border border-[#333] text-[#666] font-black text-[13px] cursor-not-allowed';
+  } else {
+    // SAFETY HOLD / UNDER REVIEW - Before verdict
+    document.getElementById('pageTitle').innerText = 'Account Under Review';
+    document.getElementById('pageSub').innerText = "We've temporarily limited access to keep UMBRELLAsocial safe while verifying the Women Helpline report. This isn't necessarily permanent.";
+    document.getElementById('restoreLabel').innerText = 'RESTORE ON';
+    document.getElementById('restoreText').innerText = 'Under review - will be restored after manual review (24h)';
+    document.getElementById('restoreText').className = 'text-[11px] font-bold text-[#4a90e2] mt-1 leading-[14px]';
+    document.getElementById('statusTitle').innerText = 'Under Review';
+    document.getElementById('statusTitle').className = 'text-[16px] font-black tracking-widest text-white mt-3';
+    document.getElementById('statusSub').innerText = 'Our team is reviewing the Women Helpline report and female POV. If report is false, you will be unbanned. Usually < 24 hours.';
+    document.getElementById('statusBox').className = 'mt-6 p-5 rounded-2xl bg-[#111] border border-[#1e1e1e] text-center';
+    document.getElementById('iconBox').innerHTML = '<i class="fa-solid fa-shield-halved text-xl text-[#4a7fd4]"></i>';
+    document.getElementById('iconBox').className = 'w-16 h-16 rounded-full bg-[#1a2332] border border-[#1e2d45] flex items-center justify-center mx-auto';
+    document.getElementById('requestBtn').innerHTML = '<i class="fa-solid fa-envelope mr-2"></i> Request Review';
+    document.getElementById('requestBtn').disabled = false;
+    document.getElementById('requestBtn').className = 'flex-1 py-3.5 rounded-full bg-white text-black font-black text-[13px] hover:bg-[#eee] transition';
+  }
+});
+
+async function requestReview(){
+  if(confirm('Request manual review?')){ alert('Review request sent. Our team will check within 24h.'); }
+}
+function logout(){ auth.signOut().then(()=>location.href='auth.html'); }
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>body{background:#000}</style>
+</head>
+<body class="min-h-screen bg-[#020202] flex items-center justify-center p-4">
+<div class="w-full max-w-[420px] bg-[#0f0f0f] border border-[#1e1e1e] rounded-[28px] p-7 shadow-[0_0_80px_rgba(236,72,153,0.12)]">
+  <div id="iconBox" class="w-16 h-16 rounded-full bg-[#1a2332] border border-[#1e2d45] flex items-center justify-center mx-auto"><i class="fa-solid fa-shield-halved text-xl text-[#4a7fd4]"></i></div>
+  <h1 id="pageTitle" class="text-[22px] font-black text-white text-center mt-5">Account Under Review</h1>
+  <p id="pageSub" class="text-[12px] text-[#666] text-center mt-2 leading-[16px]">We've temporarily limited access to keep UMBRELLAsocial safe. This isn't necessarily permanent.</p>
+  <div class="mt-6 p-4 rounded-2xl bg-black border border-[#1a1a1a]">
+    <p class="text-[9px] font-black tracking-widest text-[#555]">REASON</p>
+    <p id="reasonText" class="text-[13px] text-[#ddd] mt-2 leading-[18px]">Loading...</p>
+    <div class="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-[#1a1a1a]">
+      <div><p class="text-[9px] text-[#555] font-black">RESTRICTED AT</p><p id="bannedAt" class="text-[11px] text-white mt-1 font-bold">--</p></div>
+      <div><p id="restoreLabel" class="text-[9px] text-[#555] font-black">RESTORE ON</p><p id="restoreText" class="text-[11px] text-[#4a90e2] mt-1 font-bold leading-[14px]">--</p></div>
+    </div>
+  </div>
+  <div id="statusBox" class="mt-6 p-5 rounded-2xl bg-[#111] border border-[#1e1e1e] text-center">
+    <p class="text-[9px] font-black tracking-[0.2em] text-[#555]">STATUS</p>
+    <p id="statusTitle" class="text-[16px] font-black tracking-widest text-white mt-3">Under Review</p>
+    <p id="statusSub" class="text-[11px] text-[#555] mt-3 leading-[15px]">Our team is reviewing your account. This usually takes less than 24 hours.</p>
+  </div>
+  <div class="flex gap-2 mt-6">
+    <button id="requestBtn" onclick="requestReview()" class="flex-1 py-3.5 rounded-full bg-white text-black font-black text-[13px] hover:bg-[#eee]"><i class="fa-solid fa-envelope mr-2"></i> Request Review</button>
+    <button onclick="logout()" class="w-12 h-12 rounded-full bg-[#1a1a1a] border border-[#222] flex items-center justify-center text-[#666] hover:text-white"><i class="fa-solid fa-arrow-right-from-bracket text-xs"></i></button>
+  </div>
+  <p class="text-[10px] text-[#333] text-center mt-4">Made with ♥ by Abhishek Ganguly • Most reviews done in &lt;24h</p>
+</div>
+</body>
+</html>

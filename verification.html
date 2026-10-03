@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get Verified / UMBRELLAsocial • Secure</title>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyC4DGER69Xfc3P_xcQR5RtXH3oBuLP9rKY",authDomain:"umbrellasocial.firebaseapp.com",projectId:"umbrellasocial",storageBucket:"umbrellasocial.firebasestorage.app",messagingSenderId:"126237795119",appId:"1:126237795119:web:db54ac49f178e0136bf7da"};
+if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore(); const auth=firebase.auth();
+let currentUid=null, currentUserData={}, selectedBadgeType='blue', finalBase64='';
+const REQUIRED_DAYS = 180;
+function cleanH(h){ return (h||'user').toString().replace(/@/g,'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'')||'user'; }
+
+async function init(){
+  // TIMEOUT FALLBACK FOR FILE://
+  setTimeout(()=>{
+    const loader = document.getElementById('loader');
+    if(loader && loader.style.display!=='none'){
+      console.warn('Auth timeout - forcing UI (file:// mode)');
+      loader.style.display='none';
+      document.getElementById('mainApp').style.display='block';
+      if(!currentUid){
+        currentUserData={name:'Preview User', username:'preview', email:'preview@test.com', isVerified:false};
+        safeFill();
+        checkExistingStatus();
+      }
+    }
+  }, 3500);
+
+  auth.onAuthStateChanged(async u=>{
+    if(!u){
+      const loader=document.getElementById('loader');
+      loader.innerHTML=`<div class="text-center"><p class="text-white font-bold">Not logged in (File:// blocked)</p><p class="text-[11px] text-white/40 mt-2">Use Live Server, not double-click</p><a href="auth.html" class="mt-3 inline-block bg-white text-black px-5 py-2 rounded-full text-xs font-bold">Login</a></div>`;
+      // Still hide after 2 sec for preview
+      setTimeout(()=>{ loader.style.display='none'; document.getElementById('mainApp').style.display='block'; safeFill(); checkExistingStatus(); }, 2000);
+      return;
+    }
+    currentUid=u.uid;
+    try{
+      const snap=await db.collection('users').doc(u.uid).get();
+      if(snap && snap.exists) currentUserData=snap.data();
+      else currentUserData={ name:u.displayName||'User', username:u.email?.split('@')[0]||'user', email:u.email||'', photoURL:u.photoURL||'' };
+    }catch(e){ currentUserData={name:'User', username:'user', email:u.email||''}; }
+    safeFill();
+    document.getElementById('loader').style.display='none';
+    document.getElementById('mainApp').style.display='block';
+    checkExistingStatus();
+  });
+}
+function safeFill(){
+  const nameEl=document.getElementById('autoName'); if(nameEl) nameEl.value=currentUserData.name||'User';
+  const handleEl=document.getElementById('autoHandle'); if(handleEl) handleEl.value='@'+cleanH(currentUserData.username||'user');
+  const emailEl=document.getElementById('autoEmail'); if(emailEl) emailEl.value=currentUserData.email||'';
+  const picEl=document.getElementById('autoPic');
+  if(picEl){
+    if(currentUserData.photoURL) picEl.innerHTML=`<img src="${currentUserData.photoURL}" class="w-full h-full object-cover">`;
+    else picEl.innerText=(currentUserData.name||'U').substring(0,2).toUpperCase();
+  }
+}
+document.addEventListener('DOMContentLoaded', init);
+
+function getGlowEligibility(){
+  if(!currentUserData.isVerified) return {allowed:false, days:0, remaining:180, reason:'no-blue'};
+  if(currentUserData.verifiedType==='glow' || currentUserData.isFeatured || currentUserData.hasGlow) return {allowed:false, days:180, remaining:0, reason:'already-glow'};
+  const verifiedAt = currentUserData.verifiedAt?.toDate? currentUserData.verifiedAt.toDate() : (currentUserData.verifiedAt? new Date(currentUserData.verifiedAt) : null);
+  if(!verifiedAt) return {allowed:false, days:0, remaining:180, reason:'no-timestamp'};
+  const diffDays = Math.floor((new Date() - verifiedAt)/(1000*60*60*24));
+  const remaining = REQUIRED_DAYS - diffDays;
+  return {allowed: diffDays>=REQUIRED_DAYS, days: diffDays, remaining: remaining>0?remaining:0, reason: remaining>0?'wait':'ok'};
+}
+function getBlueEligibility(){
+  if(!currentUserData.isVerified) return {allowed:true};
+  return {allowed:false, reason:'already-blue'};
+}
+async function checkExistingStatus(){
+  enforceRestrictions();
+  const box=document.getElementById('alreadyVerifiedBox');
+  if(currentUserData.isVerified && box){
+    box.classList.remove('hidden');
+    const type = currentUserData.verifiedType||'blue';
+    const elig = getGlowEligibility();
+    if(type==='glow'){
+      box.innerHTML=`<div class="flex gap-2"><i class="fa-solid fa-crown text-purple-400 mt-0.5"></i><div><p class="text-[12px] font-black text-white">You hold Blue + Glow</p><p class="text-[11px] text-white/40 mt-1">No further application needed.</p></div></div>`;
+    } else {
+      if(elig.allowed) box.innerHTML=`<div class="flex gap-2"><i class="fa-solid fa-circle-check text-[#1d9bf0] mt-0.5"></i><div><p class="text-[12px] font-black text-white">You hold Blue Verified (${elig.days} days)</p><p class="text-[11px] text-green-400 mt-1">✓ Eligible for Glow upgrade! BLUE re-apply blocked.</p></div></div>`;
+      else box.innerHTML=`<div class="flex gap-2"><i class="fa-solid fa-circle-check text-[#1d9bf0] mt-0.5"></i><div><p class="text-[12px] font-black text-white">You hold Blue Verified (${elig.days} days)</p><p class="text-[11px] text-amber-400 mt-1">🔒 Glow unlocks in ${elig.remaining} days • BLUE re-apply blocked</p></div></div>`;
+    }
+    const btn=document.getElementById('submitBtn');
+    if(type==='glow'){ btn.disabled=true; btn.innerText='Already Glow Verified'; btn.classList.add('opacity-50'); }
+    if(type==='blue' && btn){
+      btn.innerHTML = elig.allowed? `Upgrade to Blue + Glow <i class="fa-solid fa-arrow-right ml-2"></i>` : `Can't Submit • ${elig.remaining} days to Glow`;
+      btn.disabled =!elig.allowed; if(!elig.allowed) btn.classList.add('opacity-50'); else { btn.classList.remove('opacity-50'); selectedBadgeType='glow'; }
+    }
+  }
+  try{
+    const pend = await db.collection('verificationRequests').where('userId','==',currentUid).where('status','==','pending').limit(1).get().catch(()=>null);
+    if(pend &&!pend.empty){
+      const pBox=document.getElementById('pendingBox'); if(pBox) pBox.classList.remove('hidden');
+      const btn=document.getElementById('submitBtn'); if(btn){ btn.disabled=true; btn.innerHTML='Pending Review • Check Notifications'; btn.classList.add('opacity-50'); }
+    }
+  }catch(e){}
+}
+function enforceRestrictions(){
+  const blueCard = document.getElementById('card-blue');
+  const glowCard = document.getElementById('card-glow');
+  const lockOverlay = document.getElementById('glowLockOverlay');
+  const glowBadge = document.getElementById('glowRequireBadge');
+  if(!blueCard ||!glowCard) return;
+  const blueElig = getBlueEligibility();
+  const glowElig = getGlowEligibility();
+
+  if(!blueElig.allowed){
+    blueCard.classList.remove('border-2','border-[#1d9bf0]','bg-[#1d9bf0]/10');
+    blueCard.classList.add('border','border-[#1d9bf0]/20','bg-[#1d9bf0]/5');
+    blueCard.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-[#1d9bf0]/20 flex items-center justify-center"><i class="fa-solid fa-circle-check text-[#1d9bf0] text-sm"></i></div>
+          <span class="font-black text-[14px] text-white">Blue Badge</span>
+          <span class="text-[8px] bg-[#1d9bf0] text-white px-2 py-0.5 rounded-full font-black">ACTIVE</span>
+        </div>
+        <i class="fa-solid fa-lock text-[#1d9bf0]/50 text-[12px]"></i>
+      </div>
+      <div class="mt-3"><p class="text-[12px] text-[#1d9bf0] font-bold">✓ Already Holding Blue</p><p class="text-[11px] text-white/40 mt-1 leading-4">Re-apply blocked while holding badge. Hold 180 days to unlock Glow.</p></div>`;
+    blueCard.setAttribute('onclick', 'showBlueBlockedModal()');
+  }
+  if(!glowElig.allowed){
+    if(lockOverlay){ lockOverlay.classList.remove('hidden'); lockOverlay.classList.add('flex'); }
+    if(glowBadge) glowBadge.classList.remove('hidden');
+    const titleEl=document.getElementById('glowLockTitle'); const subEl=document.getElementById('glowLockSub'); const countEl=document.getElementById('glowCountdownText');
+    if(glowElig.reason==='no-blue'){ if(titleEl) titleEl.innerText='LOCKED'; if(subEl) subEl.innerHTML='Requires Blue Badge first.'; if(countEl) countEl.innerText=''; }
+    else if(glowElig.reason==='already-glow'){ if(titleEl) titleEl.innerText='ALREADY GLOW'; if(subEl) subEl.innerHTML='You already have Blue+Glow'; }
+    else { if(titleEl) titleEl.innerText=`${glowElig.remaining} DAYS LEFT`; if(subEl) subEl.innerHTML=`Hold Blue ${glowElig.days}/180 days`; if(countEl) countEl.innerText=`Unlocks in ${Math.ceil(glowElig.remaining/30)} months`; }
+    glowCard.setAttribute('onclick', 'showGlowLockedModal()');
+  } else {
+    if(lockOverlay){ lockOverlay.classList.add('hidden'); lockOverlay.classList.remove('flex'); }
+    if(glowBadge) glowBadge.classList.add('hidden');
+    glowCard.setAttribute('onclick', "selectType('glow')");
+  }
+}
+function showGlowLockedModal(){
+  const elig = getGlowEligibility();
+  const titleEl=document.getElementById('lockedModalTitle'); const descEl=document.getElementById('lockedModalDesc');
+  if(elig.reason==='no-blue'){ titleEl.innerText='Blue Badge Required First'; descEl.innerHTML=`You cannot apply for <span class="text-purple-400 font-bold">Blue + Glow</span> directly.<br><br>First get <span class="text-[#1d9bf0] font-bold">Blue Verified</span>, hold it for <b>6 MONTHS</b>, then Glow unlocks.`; }
+  else { titleEl.innerText=`Glow Locked • ${elig.remaining} Days Remaining`; descEl.innerHTML=`You hold Blue for <b>${elig.days} days</b> only.<br><br>Complete <b>180 days</b> with Blue.<br><br><span class="text-red-400 font-bold">${elig.remaining} days left.</span>`; }
+  document.getElementById('glowLockedModal').classList.remove('hidden'); document.getElementById('glowLockedModal').classList.add('flex');
+}
+function showBlueBlockedModal(){
+  document.getElementById('lockedModalTitle').innerText='Already Blue Verified';
+  document.getElementById('lockedModalDesc').innerHTML=`You already hold <span class="text-[#1d9bf0] font-bold">Blue Badge</span>.<br><br>You <b>cannot apply for Blue again</b> while holding it.<br><br>Hold 6 months to unlock Glow.`;
+  document.getElementById('glowLockedModal').classList.remove('hidden'); document.getElementById('glowLockedModal').classList.add('flex');
+}
+function closeGlowLockedModal(){ document.getElementById('glowLockedModal').classList.add('hidden'); document.getElementById('glowLockedModal').classList.remove('flex'); }
+function selectType(t){
+  if(t==='blue' &&!getBlueEligibility().allowed){ showBlueBlockedModal(); return; }
+  if(t==='glow' &&!getGlowEligibility().allowed){ showGlowLockedModal(); return; }
+  selectedBadgeType=t;
+  document.querySelectorAll('.badge-card').forEach(c=>{
+    if(c.id==='card-blue' &&!getBlueEligibility().allowed) return;
+    c.classList.remove('border-[#1d9bf0]','border-purple-500','border-2','bg-[#1d9bf0]/10','bg-purple-500/10');
+    c.classList.add('border-white/[0.06]');
+  });
+  const card=document.getElementById('card-'+t);
+  if(t==='blue' &&!getBlueEligibility().allowed) return;
+  if(card){ card.classList.remove('border-white/[0.06]'); card.classList.add('border-2', t==='blue'?'border-[#1d9bf0]':'border-purple-500', t==='blue'?'bg-[#1d9bf0]/10':'bg-purple-500/10'); }
+  const typeLabel=document.getElementById('typeLabel'); if(typeLabel) typeLabel.innerText=t==='blue'?'Blue':'Blue + Glow';
+}
+function handleIdUpload(input){
+  const file=input.files[0]; if(!file) return;
+  const preview=document.getElementById('idPreview'); if(preview){ preview.classList.remove('hidden'); preview.innerHTML=`<p class="text-[11px] text-amber-400"><i class="fa-solid fa-spinner fa-spin"></i> Compressing...</p>`; }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas'); let w=img.width, h=img.height; const MAX=700;
+      if(w>MAX || h>MAX){ if(w>h){ h*=MAX/w; w=MAX; } else { w*=MAX/h; h=MAX; } }
+      canvas.width=w; canvas.height=h; canvas.getContext('2d').drawImage(img,0,0,w,h);
+      finalBase64=canvas.toDataURL('image/jpeg',0.4);
+      if(preview) preview.innerHTML=`<img src="${finalBase64}" class="w-full h-32 object-contain rounded-xl border border-green-500/20 bg-black"><p class="text-[10px] text-green-400 mt-1">✓ ${(finalBase64.length/1024).toFixed(0)}KB Ready</p>`;
+    }; img.src=e.target.result;
+  }; reader.readAsDataURL(file);
+}
+async function submitRequest(){
+  if(selectedBadgeType==='blue' &&!getBlueEligibility().allowed){ showBlueBlockedModal(); return; }
+  if(selectedBadgeType==='glow' &&!getGlowEligibility().allowed){ showGlowLockedModal(); return; }
+  const category=document.getElementById('category')?.value; const fullId=document.getElementById('fullIdNumber')?.value.trim(); const instaLink=document.getElementById('instaLink')?.value.trim(); const newsLink=document.getElementById('newsLink')?.value.trim(); const reason=document.getElementById('reasonInput')?.value.trim();
+  if(!category){ alert('Select category.'); return; } if(!fullId || fullId.length<8){ alert('ID min 8 chars.'); return; } if(!finalBase64){ alert('ID proof mandatory.'); return; } if(!reason || reason.length<50){ alert('Reason min 50 chars.'); return; }
+  const btn=document.getElementById('submitBtn'); btn.innerHTML=`<i class="fa-solid fa-spinner fa-spin"></i> Submitting...`; btn.disabled=true;
+  try{
+    await db.collection('verificationRequests').add({ userId:currentUid||'preview-user', name:currentUserData.name, handle:cleanH(currentUserData.username), email:currentUserData.email, photoURL:currentUserData.photoURL||'', requestedType:selectedBadgeType, category:category, fullIdNumber:fullId, idImage:finalBase64, instaLink:instaLink, newsLink:newsLink, reason:reason, status:'pending', createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+    alert('Submitted.'); location.href='notifications.html';
+  }catch(e){ alert('Failed: '+e.message); btn.disabled=false; }
+}
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>body{background:#050507;color:#e7e9ea;font-family:Inter,sans-serif}#mainApp{display:none}.badge-card{position:relative;transition:all 0.2s}</style>
+</head>
+<body>
+<div id="loader" class="fixed inset-0 bg-[#050507] flex items-center justify-center z-50"><div class="w-8 h-8 border-2 border-white/10 border-t-white rounded-full animate-spin"></div></div>
+
+<div id="mainApp" class="max-w-[720px] mx-auto min-h-screen bg-[#08080a] border-x border-white/[0.06]">
+<div class="sticky top-0 z-20 bg-[#08080a]/90 backdrop-blur-2xl border-b border-white/[0.06] flex items-center justify-between px-4 py-3">
+  <div class="flex items-center gap-3"><a href="homepage.html" class="w-9 h-9 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white/70"><i class="fa-solid fa-arrow-left"></i></a><div><h1 class="font-black text-[15px]">Get Verified</h1><p class="text-[10px] text-white/40">SECURE • ADMIN REVIEW</p></div></div>
+  <a href="homepage.html" class="px-3 py-1.5 rounded-full bg-white text-black font-black text-[11px]">Home</a>
+</div>
+
+<div class="p-4">
+<div id="pendingBox" class="hidden p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-bold"><i class="fa-solid fa-clock mr-1"></i> Pending verification under review.</div>
+<div id="alreadyVerifiedBox" class="hidden mt-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]"></div>
+
+<!-- PROFILE ROW - THIS WAS MISSING AND CAUSING CRASH -->
+<div class="flex gap-3 mt-5 p-4 bg-white/[0.03] border border-white/[0.06] rounded-[20px]">
+  <div id="autoPic" class="w-14 h-14 rounded-full bg-white/10 border border-white/10 flex items-center justify-center font-black text-white overflow-hidden flex-shrink-0">U</div>
+  <div class="flex-1 space-y-2">
+    <input id="autoName" disabled class="w-full bg-black/50 border border-white/[0.06] rounded-xl px-3 py-2.5 text-[12px] text-white font-bold">
+    <input id="autoHandle" disabled class="w-full bg-black/50 border border-white/[0.06] rounded-xl px-3 py-2.5 text-[12px] text-[#1d9bf0] font-bold">
+    <input id="autoEmail" disabled class="w-full bg-black/50 border border-white/[0.06] rounded-xl px-3 py-2.5 text-[11px] text-white/30">
+  </div>
+</div>
+
+<div class="mt-5 p-3.5 rounded-[16px] bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent border border-amber-500/15"><p class="text-[11px] text-amber-200 font-black">STRICT POLICY: UMBRELLA Verification is reserved for individuals or entities that are well-known, frequently searched, and featured in credible sources. Recognition must exist beyond this platform.</p></div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-5">
+<div id="card-blue" onclick="selectType('blue')" class="badge-card border-2 border-[#1d9bf0] bg-[#1d9bf0]/10 rounded-[20px] p-4 cursor-pointer relative overflow-hidden">
+  <div id="dot-blue" class="absolute top-3 right-3 w-5 h-5 bg-[#1d9bf0] rounded-full flex items-center justify-center"><i class="fa-solid fa-check text-[10px] text-white"></i></div>
+  <div class="flex items-center gap-2"><div class="w-8 h-8 rounded-full bg-[#1d9bf0]/20 flex items-center justify-center"><i class="fa-solid fa-circle-check text-[#1d9bf0] text-sm"></i></div><span class="font-black text-[14px] text-white">Blue Badge</span><span class="text-[8px] bg-[#1d9bf0] text-white px-2 py-0.5 rounded-full font-black">VERIFIED</span></div>
+  <p class="text-[12px] text-white font-bold mt-2.5">Reserved for notable entities only.</p>
+</div>
+<div id="card-glow" class="badge-card border border-white/[0.06] rounded-[20px] p-4 cursor-pointer bg-white/[0.03] relative overflow-hidden">
+  <div id="dot-glow" class="hidden absolute top-3 right-3 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center z-10"><i class="fa-solid fa-check text-[10px] text-white"></i></div>
+  <div id="glowLockOverlay" class="hidden absolute inset-0 bg-black/80 backdrop-blur-[4px] rounded-[20px] z-20 flex-col items-center justify-center gap-2"><p id="glowLockTitle" class="text-[12px] font-black text-white">LOCKED</p><p id="glowLockSub" class="text-[10px] text-white/50 text-center px-6">Requires Blue</p><p id="glowCountdownText" class="text-[10px] font-black text-amber-400"></p></div>
+  <div id="glowRequireBadge" class="hidden absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[8px] font-black">6 MONTHS LOCK</div>
+  <div class="flex items-center gap-2"><div class="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-crown text-purple-400 text-sm"></i></div><span class="font-black text-[14px] text-white">Blue + Glow</span></div>
+  <div id="glowCardRequirement" class="mt-3 text-[12px] text-white"><b>Must hold Blue 6 months (180 days)</b></div>
+</div>
+</div>
+
+<div class="mt-6 space-y-4">
+<div><label class="text-[10px] font-black tracking-widest text-white/40">CATEGORY *</label><select id="category" class="w-full mt-2 bg-black/50 border border-white/[0.08] rounded-xl p-3.5 text-[13px] text-white"><option value="">Select category</option><option value="public_figure">Public Figure</option><option value="creator">Creator</option><option value="other">Other</option></select></div>
+<div><label class="text-[10px] font-black tracking-widest text-white/40">ID NUMBER *</label><input id="fullIdNumber" type="password" placeholder="Aadhaar / Passport" class="w-full mt-2 bg-black/50 border border-white/[0.08] rounded-xl p-3.5 text-[12px] text-white"></div>
+<div><label class="text-[10px] font-black tracking-widest text-white/40">ID PROOF *</label><input type="file" accept="image/*" onchange="handleIdUpload(this)" class="w-full mt-2 text-[11px] text-white/30 file:bg-white file:text-black file:border-0 file:rounded-full file:px-4 file:py-2 file:text-[11px] file:font-black file:mr-3"><div id="idPreview" class="hidden mt-3"></div></div>
+<div><label class="text-[10px] font-black tracking-widest text-white/40">INSTAGRAM LINK *</label><input id="instaLink" placeholder="https://instagram.com/username" class="w-full mt-2 bg-black/50 border border-white/[0.08] rounded-xl p-3.5 text-[12px] text-white"></div>
+<div><label class="text-[10px] font-black tracking-widest text-white/40">NEWS LINK *</label><input id="newsLink" placeholder="https://... press coverage" class="w-full mt-2 bg-black/50 border border-white/[0.08] rounded-xl p-3.5 text-[12px] text-white"></div>
+<div><label class="text-[10px] font-black tracking-widest text-white/40">JUSTIFICATION *</label><textarea id="reasonInput" rows="4" placeholder="Why you should be verified? Min 50 chars" class="w-full mt-2 bg-black/50 border border-white/[0.08] rounded-xl p-3.5 text-[12px] text-white"></textarea></div>
+</div>
+
+<button id="submitBtn" onclick="submitRequest()" class="w-full mt-6 bg-white text-black font-black py-4 rounded-full text-[13px]">Submit for <span id="typeLabel">Blue</span></button>
+</div>
+</div>
+
+<div id="glowLockedModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md items-center justify-center p-4"><div class="bg-[#111113] w-full max-w-[360px] rounded-[24px] border border-white/[0.08] p-6 text-center"><h3 id="lockedModalTitle" class="font-black text-white">Locked</h3><p id="lockedModalDesc" class="text-[12px] text-white/50 mt-2"></p><div class="mt-5"><button onclick="closeGlowLockedModal()" class="w-full bg-white text-black font-black py-2.5 rounded-full text-[12px]">Close</button></div></div></div>
+</body>
+</html>
