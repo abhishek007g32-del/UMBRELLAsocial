@@ -1,10 +1,29 @@
+
+
+
+
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Explore / UMBRELLAsocial • Secure</title>
 <script>(function(){ try{ const c=JSON.parse(localStorage.getItem('umbrella_ban_cache')||'null'); if(c&&c.banned){ const u=c.until?new Date(c.until):null; if(!u||u>new Date()){ if(!location.pathname.includes('banned.html')) location.replace('banned.html'); }} }catch(e){} })();</script>
-<style>#mainApp{display:none} #banCheckLoader{display:flex}</style>
+<style>
+#mainApp{display:none} #banCheckLoader{display:flex}
+.badge-locked{flex-shrink:0!important;display:inline-flex!important;align-items:center!important;gap:4px!important}
+.badge-group-universal{display:inline-flex!important;align-items:center!important;gap:4px!important;vertical-align:middle!important;margin-left:5px!important;flex-shrink:0!important}
+.badge-item{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1}
+.badge-verified-universal{width:16px;height:16px;background:#1d9bf0;border-radius:50%;color:white;font-size:8px;display:inline-flex;align-items:center;justify-content:center}
+.badge-founder-universal{width:16px;height:16px;background:linear-gradient(135deg,#fbbf24,#f97316);border-radius:50%;color:black;font-size:8px;display:inline-flex;align-items:center;justify-content:center}
+.badge-featured-universal{width:16px;height:16px;background:linear-gradient(135deg,#a855f7,#3b82f6);border-radius:50%;color:white;font-size:8px;display:inline-flex;align-items:center;justify-content:center}
+</style>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -17,20 +36,21 @@ let currentUid=null, followingCache=new Set(), activeTab='people', allUsersCache
 function cleanH(h){ if(!h) return 'user'; return h.toString().replace(/@/g,'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'')||'user'; }
 function escapeHtml(t){ return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+// UNIVERSAL BADGE - ORDER: Verified FIRST, Featured SECOND, Founder THIRD
 function getSingleTag(u){
   if(!u) return '';
-  let badges = '';
-  if(u.isVerified) badges += `<i class="fa-solid fa-circle-check text-[#1d9bf0] text-[12px] ml-1"></i>`;
-  if(u.isFeatured) badges += `<i class="fa-solid fa-bolt text-purple-400 text-[10px] ml-0.5"></i>`;
-  if(u.isFounder){
-    return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-300 to-orange-500 text-black text-[7px] font-black tracking-widest"><i class="fa-solid fa-crown text-[6px]"></i> FOUNDER</span>` + badges;
+  if(u.isStaff &&!u.isFounder){
+    const role=(u.staffRole||'SUPPORT STAFF').toUpperCase();
+    return `<span class="badge-locked inline-flex px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[7px] font-black tracking-widest">${role}</span>`;
   }
-  if(u.isStaff){
-    const role = (u.staffRole||'SUPPORT STAFF').toUpperCase();
-    return `<span class="inline-flex px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[7px] font-black tracking-widest">${role}</span>` + badges;
-  }
-  return badges;
+  let html = '<span class="badge-group-universal">';
+  if(u.isVerified){ html += '<span class="badge-item badge-verified-universal"><i class="fa-solid fa-check"></i></span>'; }
+  if(u.isFeatured){ html += '<span class="badge-item badge-featured-universal"><i class="fa-solid fa-bolt"></i></span>'; }
+  if(u.isFounder){ html += '<span class="badge-item badge-founder-universal"><i class="fa-solid fa-crown"></i></span>'; }
+  html += '</span>';
+  return html;
 }
+function getTagsStacked(u){ return getSingleTag(u); }
 
 function cacheBan(d){ localStorage.setItem('umbrella_ban_cache', JSON.stringify({banned:true, reason:d.banReason, until:d.banUntil? (d.banUntil.toDate? d.banUntil.toDate().toISOString(): new Date(d.banUntil).toISOString()):null})); location.replace('banned.html'); }
 
@@ -58,7 +78,6 @@ function loadUsersLive(){
     if(data.isFounder) founderCache=data;
     else allUsersCache.push(data);
   });
-  // Sort founder first logic already separated
   renderFounderPinned();
   renderList(document.getElementById('searchInput')?.value||'');
   document.getElementById('usersCount').innerText = (snap.size-1)+' users';
@@ -83,7 +102,7 @@ function renderFounderPinned(){
     <div class="min-w-0">
       <div class="flex items-center gap-1.5 flex-wrap">
         <span class="font-black text-[15px] featured-name">${escapeHtml(name)}</span>
-        <span class="flex items-center">${tag}</span>
+        <span class="flex items-center badge-locked">${tag}</span>
         <span class="px-1.5 py-0.5 rounded-full bg-amber-500 text-black text-[7px] font-black tracking-widest">PINNED</span>
       </div>
       <p class="text-[12px] text-white/40 truncate mt-0.5">@${cleanH(u.username||u.handle||'founder')} · Founder of UMBRELLA · Immutable</p>
@@ -100,23 +119,11 @@ function renderList(search=''){
  const container=document.getElementById('usersList');
  const sLower=search.toLowerCase().trim();
  let filtered=[...allUsersCache].filter(u=>u.id!==currentUid);
-
- // TAB FILTERS - REMOVE FOUNDER & STAFF FROM PEOPLE/FEATURED
- if(activeTab==='people'){
-   filtered=filtered.filter(u=>!u.isStaff &&!u.isFounder);
- }
- if(activeTab==='featured'){
-   filtered=filtered.filter(u=>!!u.isFeatured &&!!u.isVerified &&!u.isStaff &&!u.isFounder);
- }
- if(activeTab==='staff'){
-   filtered=filtered.filter(u=>!!u.isStaff);
- }
- if(activeTab==='verified'){
-   filtered=filtered.filter(u=>!!u.isVerified &&!u.isFeatured &&!u.isStaff &&!u.isFounder);
- }
-
+ if(activeTab==='people'){ filtered=filtered.filter(u=>!u.isStaff &&!u.isFounder); }
+ if(activeTab==='featured'){ filtered=filtered.filter(u=>!!u.isFeatured &&!!u.isVerified &&!u.isStaff &&!u.isFounder); }
+ if(activeTab==='staff'){ filtered=filtered.filter(u=>!!u.isStaff); }
+ if(activeTab==='verified'){ filtered=filtered.filter(u=>!!u.isVerified &&!u.isFeatured &&!u.isStaff &&!u.isFounder); }
  if(sLower) filtered=filtered.filter(u=> (u.name||'').toLowerCase().includes(sLower) || cleanH(u.username||u.handle||'').includes(cleanH(sLower)));
-
  if(!filtered.length){
    container.innerHTML=`<div class="p-12 text-center"><div class="w-12 h-12 mx-auto rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-3"><i class="fa-solid fa-magnifying-glass text-white/20"></i></div><p class="font-bold text-white text-[13px]">No users in ${activeTab}</p><p class="text-[11px] text-white/30 mt-1">Try searching or switch tab</p></div>`;
    return;
@@ -133,7 +140,6 @@ function renderList(search=''){
   const avatarGlow=(isFeatured||isFounder)?'border-2 border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.5)]': isStaff?'border-2 border-amber-400/50 shadow-[0_0_12px_rgba(251,191,36,0.3)]' : 'border border-white/10';
   const avatarBg=isFounder?'bg-gradient-to-br from-amber-300 to-orange-600': isFeatured?'bg-gradient-to-br from-[#c084fc] to-[#38bdf8]': isStaff?'bg-gradient-to-br from-amber-300 to-orange-600' : 'bg-white/10';
   const tag=getSingleTag(u);
-
   html+=`
   <div class="p-4 flex items-center justify-between hover:bg-white/[0.03] border-b border-white/[0.06] group transition-colors">
     <a href="profile.html?uid=${u.id}" class="flex items-center gap-3 min-w-0 flex-1">
@@ -141,7 +147,7 @@ function renderList(search=''){
       <div class="min-w-0">
         <div class="flex items-center gap-1 flex-wrap">
           <span class="font-bold text-[14px] text-white truncate ${nameClass} group-hover:underline">${escapeHtml(name)}</span>
-          <span class="flex items-center flex-shrink-0">${tag}</span>
+          <span class="flex items-center flex-shrink-0 badge-locked">${tag}</span>
         </div>
         <p class="text-[12px] text-white/35 truncate">@${cleanH(u.username||u.handle||'user')} · <span class="text-white/50 group-hover:text-white">View profile</span></p>
       </div>
@@ -155,17 +161,11 @@ function renderList(search=''){
 function switchTab(tab){
  activeTab=tab;
  document.querySelectorAll('.tab-btn').forEach(b=>{
-   if(b.dataset.tab===tab){
-     b.classList.add('text-white','border-white','bg-white/[0.06]');
-     b.classList.remove('text-white/40','border-transparent');
-   } else {
-     b.classList.remove('text-white','border-white','bg-white/[0.06]');
-     b.classList.add('text-white/40','border-transparent');
-   }
+   if(b.dataset.tab===tab){ b.classList.add('text-white','border-white','bg-white/[0.06]'); b.classList.remove('text-white/40','border-transparent'); }
+   else { b.classList.remove('text-white','border-white','bg-white/[0.06]'); b.classList.add('text-white/40','border-transparent'); }
  });
  renderList(document.getElementById('searchInput').value);
 }
-
 async function toggleFollow(id){
  if(!id||id===currentUid) return;
  const q=await db.collection('follows').where('followerId','==',currentUid).where('followingId','==',id).limit(1).get();
@@ -185,10 +185,7 @@ body{background:#050507;color:#e7e9ea;font-family:'Inter',sans-serif}
 </head>
 <body>
 <div id="banCheckLoader" class="fixed inset-0 z-[9999] bg-[#050507] flex items-center justify-center"><div class="w-10 h-10 border-2 border-white/10 border-t-white rounded-full animate-spin"></div></div>
-
 <div id="mainApp" class="max-w-[720px] mx-auto w-full min-h-screen bg-[#08080a] border-x border-white/[0.06]">
-
-<!-- TOP BAR - BACK TO HOME -->
 <div class="sticky top-0 z-30 bg-[#08080a]/90 backdrop-blur-2xl border-b border-white/[0.06]">
   <div class="flex items-center justify-between p-4">
     <div class="flex items-center gap-3">
@@ -203,27 +200,19 @@ body{background:#050507;color:#e7e9ea;font-family:'Inter',sans-serif}
     </div>
     <a href="homepage.html" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white text-black font-black text-[11px] hover:bg-white/90"><i class="fa-solid fa-house text-[10px]"></i> Home</a>
   </div>
-
-  <!-- SEARCH -->
   <div class="px-4 pb-3">
     <div class="relative">
       <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-white/25 text-[13px]"></i>
       <input id="searchInput" oninput="renderList(this.value)" placeholder="Search users, handles..." class="w-full bg-black/50 border border-white/[0.08] rounded-full py-2.5 pl-11 pr-4 text-[13px] text-white placeholder-white/25 outline-none focus:border-white/20 focus:bg-black/70 transition-all">
     </div>
   </div>
-
-  <!-- TABS - PEOPLE / FEATURED / STAFF -->
   <div class="flex gap-2 px-4 pb-3 overflow-x-auto">
     <button data-tab="people" onclick="switchTab('people')" class="tab-btn px-4 py-2 rounded-full text-[11px] font-black tracking-widest text-white border-white bg-white/[0.06] whitespace-nowrap">PEOPLE</button>
     <button data-tab="featured" onclick="switchTab('featured')" class="tab-btn px-4 py-2 rounded-full text-[11px] font-black tracking-widest text-white/40 border-transparent whitespace-nowrap">FEATURED</button>
     <button data-tab="staff" onclick="switchTab('staff')" class="tab-btn px-4 py-2 rounded-full text-[11px] font-black tracking-widest text-white/40 border-transparent whitespace-nowrap flex items-center gap-1.5"><i class="fa-solid fa-users-gear text-[10px]"></i> STAFF TEAM <span id="staffCount" class="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[9px]">0</span></button>
   </div>
 </div>
-
-<!-- FOUNDER PINNED - IMMOVABLE -->
 <div id="founderPinned" class="p-3 bg-[#08080a] border-b border-amber-500/20"></div>
-
-<!-- DISCOVER CARD - SAME AS HOMEPAGE -->
 <div class="m-3 rounded-[20px] border border-white/[0.08] p-5 bg-gradient-to-br from-white/[0.06] to-white/[0.02] backdrop-blur-xl">
   <p class="text-[10px] font-black tracking-[0.15em] text-[#60a5fa]">DISCOVER</p>
   <h2 class="text-[16px] font-black text-white mt-2">Find your mutuals</h2>
@@ -234,10 +223,16 @@ body{background:#050507;color:#e7e9ea;font-family:'Inter',sans-serif}
   </div>
   <p class="text-[11px] text-white/30 mt-3 flex items-center gap-1.5"><i class="fa-solid fa-lock text-[9px] text-white/20"></i> Tap user to view profile · Follow + Follow back = Chat</p>
 </div>
-
-<!-- USERS LIST -->
 <div id="usersList" class="pb-10"><div class="p-10 text-center text-white/20 text-xs animate-pulse">Loading users...</div></div>
-
 </div>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
